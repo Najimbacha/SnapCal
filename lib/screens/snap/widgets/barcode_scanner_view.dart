@@ -61,7 +61,7 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView>
     _listenForBarcodes();
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     if (lifecycle == null || lifecycle == AppLifecycleState.resumed) {
-      unawaited(_controller.start());
+      _startScanner();
     }
   }
 
@@ -70,7 +70,7 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView>
   }
 
   void _handleBarcode(BarcodeCapture capture) {
-    if (_isProcessing) return;
+    if (!mounted || _isProcessing) return;
     final code = capture.barcodes.firstOrNull?.rawValue;
     if (code == null) return;
     HapticFeedback.mediumImpact();
@@ -80,11 +80,17 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView>
     widget.onBarcodeDetected(code);
   }
 
+  void _startScanner() {
+    final state = _controller.value;
+    if (state.isRunning || state.isStarting) return;
+    unawaited(_controller.start());
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _listenForBarcodes();
-      unawaited(_controller.start());
+      _startScanner();
       return;
     }
     // A permission dialog can hide the app before the first start finishes.

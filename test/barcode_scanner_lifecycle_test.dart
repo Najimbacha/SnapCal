@@ -9,6 +9,7 @@ import 'package:snapcal/screens/snap/widgets/barcode_scanner_view.dart';
 
 class _ScannerPlatform extends MobileScannerPlatform {
   final _barcodes = StreamController<BarcodeCapture?>.broadcast();
+  Completer<void>? startGate;
   int starts = 0;
   int stops = 0;
 
@@ -25,6 +26,7 @@ class _ScannerPlatform extends MobileScannerPlatform {
   @override
   Future<MobileScannerViewAttributes> start(StartOptions startOptions) async {
     starts++;
+    await startGate?.future;
     return const MobileScannerViewAttributes(
       cameraDirection: CameraFacing.back,
       currentTorchMode: TorchState.unavailable,
@@ -120,6 +122,40 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     expect(platform.starts, 1);
 
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('resume during permission startup does not start twice', (
+    tester,
+  ) async {
+    final originalPlatform = MobileScannerPlatform.instance;
+    final platform = _ScannerPlatform()..startGate = Completer<void>();
+    MobileScannerPlatform.instance = platform;
+    addTearDown(() {
+      if (!platform.startGate!.isCompleted) platform.startGate!.complete();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      MobileScannerPlatform.instance = originalPlatform;
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BarcodeScannerView(onBarcodeDetected: (_) {}, onCancel: () {}),
+      ),
+    );
+    await tester.pump();
+    expect(platform.starts, 1);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(platform.starts, 1);
+    expect(tester.takeException(), isNull);
+
+    platform.startGate!.complete();
+    await tester.pump();
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });
