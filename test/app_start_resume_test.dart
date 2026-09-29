@@ -76,6 +76,24 @@ void main() {
       expect(app.cameBack, isFalse);
     });
 
+    test('hidden is treated as paused before returning from Recents', () {
+      app.didChangeAppLifecycleState(AppLifecycleState.hidden);
+      expect(app.isPaused, isTrue);
+      expect(app.cameBack, isFalse);
+
+      app.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      expect(app.cameBack, isTrue);
+    });
+
+    test('a detached Flutter view refreshes when it is reattached', () {
+      app.didChangeAppLifecycleState(AppLifecycleState.detached);
+      expect(app.isPaused, isTrue);
+      expect(app.cameBack, isFalse);
+
+      app.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      expect(app.cameBack, isTrue);
+    });
+
     test('low memory counts, but does not rerun resume work', () {
       final before = app.memoryPressureCount;
       app.didHaveMemoryPressure();

@@ -16,6 +16,7 @@ class AppLifecycleService with WidgetsBindingObserver, ChangeNotifier {
   bool get isPaused =>
       _state == AppLifecycleState.paused ||
       _state == AppLifecycleState.inactive ||
+      _state == AppLifecycleState.hidden ||
       _state == AppLifecycleState.detached;
 
   /// Whether the app has just come back after being out of sight -- home
@@ -38,7 +39,8 @@ class AppLifecycleService with WidgetsBindingObserver, ChangeNotifier {
     if (_state == state) return;
     _state = state;
     if (state == AppLifecycleState.hidden ||
-        state == AppLifecycleState.paused) {
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
       _wentAway = true;
     }
     if (state == AppLifecycleState.resumed) {
