@@ -13,6 +13,7 @@ import '../../widgets/wazn_icons.dart';
 
 import '../../widgets/notification_permission_prompt.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_button_theme.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/meal.dart';
@@ -435,8 +436,8 @@ class _FirstMealGuideCard extends StatelessWidget {
                     color: muted,
                     visualDensity: VisualDensity.compact,
                     constraints: const BoxConstraints(
-                      minWidth: 44,
-                      minHeight: 44,
+                      minWidth: appMinimumTapTarget,
+                      minHeight: appMinimumTapTarget,
                     ),
                   ),
                 ),
@@ -648,8 +649,8 @@ class _MinimalHomeTopBar extends StatelessWidget {
             // 20px; only what you can hit changes.
             behavior: HitTestBehavior.opaque,
             child: SizedBox(
-              width: 44,
-              height: 44,
+              width: appMinimumTapTarget,
+              height: appMinimumTapTarget,
               child: Icon(
                 WaznIcons.settings,
                 color: isDark ? Colors.white54 : const Color(0xFF8E8E93),

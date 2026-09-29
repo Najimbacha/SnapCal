@@ -123,6 +123,9 @@ flutter:
     - assets/images/paywall/
     - assets/avatar/
   fonts:
+    - family: DM Sans
+      fonts:
+        - asset: assets/fonts/DMSans-Variable.ttf
     - family: WaznIcons
       fonts:
         - asset: assets/fonts/WaznIcons.ttf

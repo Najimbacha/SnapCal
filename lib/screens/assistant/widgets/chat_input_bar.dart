@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_button_theme.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/theme/theme_colors.dart';
 import '../../../widgets/app_icon.dart';
@@ -69,24 +70,31 @@ class ChatInputBar extends StatelessWidget {
                       right: -6,
                       child: GestureDetector(
                         onTap: onRemoveImage,
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
-                                blurRadius: 4,
+                        behavior: HitTestBehavior.opaque,
+                        child: SizedBox(
+                          width: appMinimumTapTarget,
+                          height: appMinimumTapTarget,
+                          child: Center(
+                            child: Container(
+                              width: 20,
+                              height: 20,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: AppColors.error,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: const Icon(
-                            AppSymbols.x,
-                            size: 12,
-                            color: Colors.white,
+                              child: const Icon(
+                                AppSymbols.x,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -211,8 +219,8 @@ class _CircleIconButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 38,
-        height: 38,
+        width: appMinimumTapTarget,
+        height: appMinimumTapTarget,
         decoration: BoxDecoration(
           color:
               isDark
@@ -246,8 +254,8 @@ class _SendButton extends StatelessWidget {
       child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,
-            width: 38,
-            height: 38,
+            width: appMinimumTapTarget,
+            height: appMinimumTapTarget,
             decoration: BoxDecoration(
               gradient:
                   canSend

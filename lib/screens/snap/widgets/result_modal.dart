@@ -2136,7 +2136,7 @@ class _FoodCardState extends State<_FoodCard>
               onTap: widget.onRename,
               behavior: HitTestBehavior.opaque,
               child: Container(
-                height: 44,
+                height: appMinimumTapTarget,
                 alignment: Alignment.center,
                 child: Text(
                   l10n.result_assign_food,
@@ -2153,8 +2153,8 @@ class _FoodCardState extends State<_FoodCard>
               onTap: widget.onDelete,
               behavior: HitTestBehavior.opaque,
               child: Container(
-                width: 44,
-                height: 44,
+                width: appMinimumTapTarget,
+                height: appMinimumTapTarget,
                 alignment: Alignment.center,
                 child: const Icon(
                   WaznIcons.delete,
@@ -2194,7 +2194,7 @@ class _FoodCardState extends State<_FoodCard>
 
 /// One labelled action at the foot of an expanded card.
 ///
-/// Full-height rather than icon-sized: a 40px row is a control you can hit
+/// Full-height rather than icon-sized: a 48px row is a control you can hit
 /// without aiming, and the word next to the glyph means nobody has to learn
 /// what the glyph meant.
 class _CardAction extends StatelessWidget {
@@ -2225,7 +2225,7 @@ class _CardAction extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        height: 40,
+        height: appMinimumTapTarget,
         decoration: BoxDecoration(
           color:
               danger
@@ -2277,8 +2277,8 @@ class _StepBtn extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 36,
-        height: 36,
+        width: appMinimumTapTarget,
+        height: appMinimumTapTarget,
         decoration: BoxDecoration(
           color: (d ? Colors.white : Colors.black).withValues(alpha: 0.07),
           shape: BoxShape.circle,
@@ -2312,7 +2312,7 @@ class _WtChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        height: 30,
+        constraints: const BoxConstraints(minHeight: appMinimumTapTarget),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color:

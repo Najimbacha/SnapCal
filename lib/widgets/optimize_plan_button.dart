@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../core/theme/app_typography.dart';
+import '../core/theme/app_button_theme.dart';
 import '../providers/assistant_provider.dart';
 import '../providers/metrics_provider.dart';
 import '../providers/settings_provider.dart';
@@ -124,8 +125,8 @@ class _OptimizePlanButtonState extends ConsumerState<OptimizePlanButton> {
                   ? Colors.white.withValues(alpha: 0.06)
                   : const Color(0xFFFCF8EF),
           foregroundColor: textColor,
-          minimumSize: const Size(36, 36),
-          fixedSize: const Size(36, 36),
+          minimumSize: const Size.square(appMinimumTapTarget),
+          fixedSize: const Size.square(appMinimumTapTarget),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(

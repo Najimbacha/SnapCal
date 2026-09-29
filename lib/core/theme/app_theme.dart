@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'app_button_theme.dart';
 import 'app_field_theme.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
 import '../../widgets/wazn_icons.dart';
@@ -55,23 +54,21 @@ class AppTheme {
           TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
         },
       ),
-      textTheme: GoogleFonts.dmSansTextTheme(
-        TextTheme(
-          displayLarge: AppTypography.displayLarge,
-          displayMedium: AppTypography.displayMedium,
-          headlineLarge: AppTypography.headlineLarge,
-          headlineMedium: AppTypography.headlineMedium,
-          headlineSmall: AppTypography.headlineSmall,
-          titleLarge: AppTypography.titleLarge,
-          titleMedium: AppTypography.titleMedium,
-          titleSmall: AppTypography.titleSmall,
-          bodyLarge: AppTypography.bodyLarge,
-          bodyMedium: AppTypography.bodyMedium,
-          bodySmall: AppTypography.bodySmall,
-          labelLarge: AppTypography.labelLarge,
-          labelMedium: AppTypography.labelMedium,
-          labelSmall: AppTypography.labelSmall,
-        ),
+      textTheme: TextTheme(
+        displayLarge: AppTypography.displayLarge,
+        displayMedium: AppTypography.displayMedium,
+        headlineLarge: AppTypography.headlineLarge,
+        headlineMedium: AppTypography.headlineMedium,
+        headlineSmall: AppTypography.headlineSmall,
+        titleLarge: AppTypography.titleLarge,
+        titleMedium: AppTypography.titleMedium,
+        titleSmall: AppTypography.titleSmall,
+        bodyLarge: AppTypography.bodyLarge,
+        bodyMedium: AppTypography.bodyMedium,
+        bodySmall: AppTypography.bodySmall,
+        labelLarge: AppTypography.labelLarge,
+        labelMedium: AppTypography.labelMedium,
+        labelSmall: AppTypography.labelSmall,
       ),
 
       appBarTheme: const AppBarTheme(
@@ -102,6 +99,7 @@ class AppTheme {
       filledButtonTheme: appFilledButtonTheme(colorScheme),
       outlinedButtonTheme: appOutlinedButtonTheme(colorScheme),
       textButtonTheme: appTextButtonTheme(colorScheme),
+      iconButtonTheme: appIconButtonTheme(colorScheme),
 
       inputDecorationTheme: appInputDecorationTheme(colorScheme),
       actionIconTheme: _actionIcons,
@@ -164,23 +162,21 @@ class AppTheme {
         },
       ),
 
-      textTheme: GoogleFonts.dmSansTextTheme(
-        TextTheme(
-          displayLarge: AppTypography.displayLarge,
-          displayMedium: AppTypography.displayMedium,
-          headlineLarge: AppTypography.headlineLarge,
-          headlineMedium: AppTypography.headlineMedium,
-          headlineSmall: AppTypography.headlineSmall,
-          titleLarge: AppTypography.titleLarge,
-          titleMedium: AppTypography.titleMedium,
-          titleSmall: AppTypography.titleSmall,
-          bodyLarge: AppTypography.bodyLarge,
-          bodyMedium: AppTypography.bodyMedium,
-          bodySmall: AppTypography.bodySmall,
-          labelLarge: AppTypography.labelLarge,
-          labelMedium: AppTypography.labelMedium,
-          labelSmall: AppTypography.labelSmall,
-        ),
+      textTheme: TextTheme(
+        displayLarge: AppTypography.displayLarge,
+        displayMedium: AppTypography.displayMedium,
+        headlineLarge: AppTypography.headlineLarge,
+        headlineMedium: AppTypography.headlineMedium,
+        headlineSmall: AppTypography.headlineSmall,
+        titleLarge: AppTypography.titleLarge,
+        titleMedium: AppTypography.titleMedium,
+        titleSmall: AppTypography.titleSmall,
+        bodyLarge: AppTypography.bodyLarge,
+        bodyMedium: AppTypography.bodyMedium,
+        bodySmall: AppTypography.bodySmall,
+        labelLarge: AppTypography.labelLarge,
+        labelMedium: AppTypography.labelMedium,
+        labelSmall: AppTypography.labelSmall,
       ),
 
       appBarTheme: const AppBarTheme(
@@ -211,6 +207,7 @@ class AppTheme {
       filledButtonTheme: appFilledButtonTheme(colorScheme),
       outlinedButtonTheme: appOutlinedButtonTheme(colorScheme),
       textButtonTheme: appTextButtonTheme(colorScheme),
+      iconButtonTheme: appIconButtonTheme(colorScheme),
 
       inputDecorationTheme: appInputDecorationTheme(colorScheme),
       actionIconTheme: _actionIcons,

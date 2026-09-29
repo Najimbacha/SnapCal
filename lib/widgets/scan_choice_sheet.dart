@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'wazn_icons.dart';
 
 import '../core/theme/app_colors.dart';
+import '../core/theme/app_button_theme.dart';
 import '../data/services/camera_service.dart';
 import '../core/theme/app_typography.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -192,10 +193,10 @@ class _CloseButton extends StatelessWidget {
       key: const ValueKey('scan-choice-close'),
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      // The dot stays 32; the padding around it is what makes the target 44.
+      // The dot stays compact; the surrounding box provides a safe target.
       child: Container(
-        width: 44,
-        height: 44,
+        width: appMinimumTapTarget,
+        height: appMinimumTapTarget,
         alignment: Alignment.center,
         child: Container(
           width: 32,

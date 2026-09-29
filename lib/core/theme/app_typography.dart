@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Wazn Typography - Expressive Material 3
 class AppTypography {
   AppTypography._();
 
-  static final TextStyle _font = GoogleFonts.dmSans();
+  static const TextStyle _font = TextStyle(fontFamily: 'DM Sans');
 
   // Display - For large calorie numbers
   static TextStyle get displayLarge => _font.copyWith(

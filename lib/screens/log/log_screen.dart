@@ -11,6 +11,7 @@ import '../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_button_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date;
@@ -790,8 +791,8 @@ class _HeaderIconButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: SizedBox(
-          width: 44,
-          height: 44,
+          width: appMinimumTapTarget,
+          height: appMinimumTapTarget,
           child: Icon(icon, size: 22, color: context.textPrimaryColor),
         ),
       ),
@@ -1223,8 +1224,8 @@ class _MealGroupSection extends StatelessWidget {
                   color: context.primaryColor,
                   iconSize: 20,
                   constraints: const BoxConstraints(
-                    minWidth: 44,
-                    minHeight: 44,
+                    minWidth: appMinimumTapTarget,
+                    minHeight: appMinimumTapTarget,
                   ),
                   icon: const Icon(WaznIcons.plus),
                 ),
@@ -1261,14 +1262,13 @@ class _MealGroupSection extends StatelessWidget {
                       label: Text(l10n.routine_save_as),
                       style: TextButton.styleFrom(
                         foregroundColor: context.textSecondaryColor,
-                        minimumSize: const Size(0, 40),
+                        minimumSize: const Size(0, appMinimumTapTarget),
                         padding: const EdgeInsetsDirectional.fromSTEB(
                           0,
                           0,
                           10,
                           0,
                         ),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         textStyle: AppTypography.labelMedium.copyWith(
                           fontWeight: FontWeight.w700,
                           fontSize: 12.5,

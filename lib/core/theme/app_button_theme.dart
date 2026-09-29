@@ -39,8 +39,10 @@ class AppButtonColors {
 
 /// Height and corner radius of every full-size button; the corners match
 /// the text fields.
+const double appMinimumTapTarget = 48;
 const double appButtonHeight = 52;
 const double appButtonRadius = appFieldRadius;
+const double appActionIconSize = 20;
 
 TextStyle get _label => AppTypography.labelLarge.copyWith(
   fontSize: 16,
@@ -96,7 +98,7 @@ ButtonStyle appTextButtonStyle(ColorScheme scheme) {
   return TextButton.styleFrom(
     foregroundColor: scheme.primary,
     disabledForegroundColor: c.offText,
-    minimumSize: const Size(44, 44),
+    minimumSize: const Size.square(appMinimumTapTarget),
     padding: const EdgeInsets.symmetric(horizontal: 12),
     textStyle: _label.copyWith(fontSize: 15),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -115,3 +117,14 @@ OutlinedButtonThemeData appOutlinedButtonTheme(ColorScheme scheme) =>
 
 TextButtonThemeData appTextButtonTheme(ColorScheme scheme) =>
     TextButtonThemeData(style: appTextButtonStyle(scheme));
+
+/// Compact visual icons inside a full Android/iOS-safe touch target.
+IconButtonThemeData appIconButtonTheme(ColorScheme scheme) =>
+    IconButtonThemeData(
+      style: IconButton.styleFrom(
+        foregroundColor: scheme.onSurface,
+        iconSize: appActionIconSize,
+        minimumSize: const Size.square(appMinimumTapTarget),
+        tapTargetSize: MaterialTapTargetSize.padded,
+      ),
+    );

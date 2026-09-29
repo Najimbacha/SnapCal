@@ -9,6 +9,7 @@ import '../../../widgets/wazn_icons.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_motion.dart';
+import '../../../core/theme/app_button_theme.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../providers/water_provider.dart';
 import '../../../widgets/motion/celebration.dart';
@@ -268,8 +269,8 @@ class _Header extends StatelessWidget {
           onTap: onClose,
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
-            width: 44,
-            height: 44,
+            width: appMinimumTapTarget,
+            height: appMinimumTapTarget,
             child: Center(
               child: Icon(
                 WaznIcons.close,

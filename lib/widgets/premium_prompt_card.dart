@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
+import '../core/theme/app_button_theme.dart';
 import '../providers/promo_offer_provider.dart';
 import '../core/theme/app_typography.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -114,8 +115,8 @@ class PremiumPromptCard extends ConsumerWidget {
                   // dismissed in practice.
                   padding: const EdgeInsets.all(10),
                   constraints: const BoxConstraints(
-                    minWidth: 44,
-                    minHeight: 44,
+                    minWidth: appMinimumTapTarget,
+                    minHeight: appMinimumTapTarget,
                   ),
                   color: (isDark ? Colors.white : Colors.black).withValues(
                     alpha: 0.3,

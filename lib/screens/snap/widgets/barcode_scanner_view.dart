@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
 import '../../../core/theme/app_motion.dart';
+import '../../../core/theme/app_button_theme.dart';
 import '../../../widgets/motion/reveal.dart';
 import '../../../widgets/wazn_icons.dart';
 
@@ -256,8 +257,8 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView>
             child: GestureDetector(
               onTap: widget.onCancel,
               child: Container(
-                width: 36,
-                height: 36,
+                width: appMinimumTapTarget,
+                height: appMinimumTapTarget,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.25),
@@ -296,8 +297,8 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44,
-        height: 44,
+        width: appMinimumTapTarget,
+        height: appMinimumTapTarget,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.25),

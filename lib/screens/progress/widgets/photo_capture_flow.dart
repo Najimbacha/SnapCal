@@ -344,7 +344,9 @@ class _CaptureSlot extends StatelessWidget {
                                   alpha: 0.6,
                                 ),
                                 foregroundColor: Colors.white,
-                                minimumSize: const Size(32, 32),
+                                minimumSize: const Size.square(
+                                  appMinimumTapTarget,
+                                ),
                               ),
                             ),
                           ),
