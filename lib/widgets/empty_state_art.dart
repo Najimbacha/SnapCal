@@ -6,6 +6,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_motion.dart';
 import '../core/theme/theme_colors.dart';
 import 'motion/visible_gate.dart';
+import 'wazn_icons.dart';
 
 /// The little picture on an empty page: a soft card whose outline draws
 /// itself, the page's icon popping in the middle, a plus when there is
@@ -138,7 +139,7 @@ class _EmptyStateArtState extends State<EmptyStateArt>
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
-                                  Icons.add_rounded,
+                                  WaznIcons.plus,
                                   size: 20,
                                   color:
                                       dark

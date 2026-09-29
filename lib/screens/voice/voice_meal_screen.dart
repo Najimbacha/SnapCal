@@ -817,7 +817,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
                       bottom: 18,
                       child: _RoundButton(
                         key: const ValueKey('voice-type'),
-                        icon: Icons.keyboard_alt_outlined,
+                        icon: WaznIcons.edit,
                         tooltip: l10n.voice_type_instead,
                         palette: c,
                         onTap: _type,
