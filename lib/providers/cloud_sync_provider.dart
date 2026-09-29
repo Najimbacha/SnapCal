@@ -39,6 +39,10 @@ final cloudSyncProvider = NotifierProvider<CloudSyncNotifier, CloudSyncState>(
   CloudSyncNotifier.new,
 );
 
+@visibleForTesting
+bool shouldSyncCloudAfterLifecycle(AppLifecycleService lifecycle) =>
+    lifecycle.cameBack;
+
 class CloudSyncNotifier extends Notifier<CloudSyncState> {
   static const _foregroundInterval = Duration(minutes: 5);
   static const _stepTimeout = Duration(seconds: 30);
@@ -71,7 +75,7 @@ class CloudSyncNotifier extends Notifier<CloudSyncState> {
     final connectivity = ConnectivityService();
     _wasOnline = connectivity.hasInternetAccess;
     void onLifecycle() {
-      if (lifecycle.isResumed) _syncIfStale();
+      if (shouldSyncCloudAfterLifecycle(lifecycle)) _syncIfStale();
     }
 
     void onConnectivity() {

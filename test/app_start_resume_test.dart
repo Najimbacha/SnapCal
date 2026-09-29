@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:snapcal/core/services/app_lifecycle_service.dart';
 import 'package:snapcal/data/models/user_settings.dart';
 import 'package:snapcal/data/services/notification_service.dart';
+import 'package:snapcal/providers/cloud_sync_provider.dart';
 import 'package:snapcal/router.dart';
 
 void main() {
@@ -74,6 +75,7 @@ void main() {
       app.didChangeAppLifecycleState(AppLifecycleState.resumed);
       expect(app.isResumed, isTrue);
       expect(app.cameBack, isFalse);
+      expect(shouldSyncCloudAfterLifecycle(app), isFalse);
     });
 
     test('hidden is treated as paused before returning from Recents', () {
@@ -83,6 +85,7 @@ void main() {
 
       app.didChangeAppLifecycleState(AppLifecycleState.resumed);
       expect(app.cameBack, isTrue);
+      expect(shouldSyncCloudAfterLifecycle(app), isTrue);
     });
 
     test('a detached Flutter view refreshes when it is reattached', () {
