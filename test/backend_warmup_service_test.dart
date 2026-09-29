@@ -36,17 +36,24 @@ void main() {
     expect(calls, 1);
   });
 
-  test('warmup probes the lightweight startup endpoint', () async {
-    String? requestedUrl;
-    final service = BackendWarmupService(
-      backendUrl: () => 'https://example.test/api/',
-      probe: (url) async => requestedUrl = url,
-    );
+  for (final (base, expected) in [
+    ('https://example.test', 'https://example.test/startup'),
+    ('https://example.test/', 'https://example.test/startup'),
+    ('https://example.test/api', 'https://example.test/api/startup'),
+    ('https://example.test/api/', 'https://example.test/api/startup'),
+  ]) {
+    test('warmup probes the startup endpoint under $base', () async {
+      String? requestedUrl;
+      final service = BackendWarmupService(
+        backendUrl: () => base,
+        probe: (url) async => requestedUrl = url,
+      );
 
-    await service.prewarm();
+      await service.prewarm();
 
-    expect(requestedUrl, 'https://example.test/startup');
-  });
+      expect(requestedUrl, expected);
+    });
+  }
 
   test('failed warmup is silent and can be retried', () async {
     var calls = 0;

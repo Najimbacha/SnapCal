@@ -60,9 +60,10 @@ class BackendWarmupService {
   Future<void> _runProbe() async {
     final stopwatch = Stopwatch()..start();
     try {
-      final startupUrl =
-          Uri.parse(_backendUrl()).resolve('/startup').toString();
-      await _probe(startupUrl).timeout(timeout);
+      // Append rather than Uri.resolve('/startup'): like every other caller of
+      // the proxy URL, keep any path prefix the base URL carries.
+      final base = _backendUrl().replaceAll(RegExp(r'/+$'), '');
+      await _probe('$base/startup').timeout(timeout);
       _lastSuccess = _clock();
       debugPrint(
         '⚡ Backend warmup completed in ${stopwatch.elapsedMilliseconds}ms',
