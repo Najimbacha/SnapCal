@@ -30,12 +30,41 @@ import '../../data/services/widget_service.dart';
 import 'app_lifecycle_service.dart';
 import '../utils/async_guard.dart';
 
+/// Makes startup idempotent while still allowing a failed attempt to retry.
+///
+/// A UI timeout cannot cancel Firebase or Hive initialization. Without this
+/// coordinator, pressing Retry started those same platform services again
+/// while the first attempt was still completing.
+class AppInitializationCoordinator {
+  Future<void>? _inFlight;
+  bool _completed = false;
+
+  Future<void> run(Future<void> Function() initialize) {
+    if (_completed) return Future.value();
+    final running = _inFlight;
+    if (running != null) return running;
+
+    late final Future<void> tracked;
+    tracked = Future<void>.sync(
+      initialize,
+    ).then((_) => _completed = true).whenComplete(() {
+      if (identical(_inFlight, tracked)) _inFlight = null;
+    });
+    _inFlight = tracked;
+    return tracked;
+  }
+}
+
 class AppInitializer {
+  static final AppInitializationCoordinator _coordinator =
+      AppInitializationCoordinator();
   static bool _errorReportingConfigured = false;
   static bool _firebaseServicesConfigured = false;
   static bool _lifecycleRecoveryConfigured = false;
 
-  static Future<void> init() async {
+  static Future<void> init() => _coordinator.run(_initialize);
+
+  static Future<void> _initialize() async {
     final startTime = DateTime.now();
     debugPrint('🚀 AppInitializer: Starting initialization...');
 
