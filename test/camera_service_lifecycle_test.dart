@@ -1,11 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 
 // The camera plugin's platform boundary is the hardware test double.
 // ignore: depend_on_referenced_packages
 import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:snapcal/data/models/user_settings.dart';
 import 'package:snapcal/data/services/camera_service.dart';
+import 'package:snapcal/data/services/connectivity_service.dart';
+import 'package:snapcal/providers/meal_provider.dart';
+import 'package:snapcal/screens/snap/snap_controller.dart';
 
 class _CameraHardware extends CameraPlatform {
   int created = 0;
@@ -13,6 +18,7 @@ class _CameraHardware extends CameraPlatform {
   Completer<void>? initializing;
   Completer<void>? disposing;
   bool failInitialization = false;
+  XFile? picture;
   final events = StreamController<CameraInitializedEvent>.broadcast();
   final errors = StreamController<CameraErrorEvent>.broadcast();
 
@@ -67,7 +73,14 @@ class _CameraHardware extends CameraPlatform {
     await disposing?.future;
     disposed.add(cameraId);
   }
+
+  @override
+  Future<XFile> takePicture(int cameraId) async => picture!;
 }
+
+class _Connectivity extends Fake implements ConnectivityService {}
+
+class _Meals extends Fake implements MealLog {}
 
 Future<void> _settle() => Future<void>.delayed(Duration.zero);
 
@@ -170,5 +183,32 @@ void main() {
     hardware.failInitialization = false;
     await service.warmup();
     expect(service.isInitialized, isTrue);
+  });
+
+  test('a failed capture still removes the camera temporary file', () async {
+    final path =
+        '${Directory.systemTemp.path}${Platform.pathSeparator}'
+        'snapcal_failed_capture_${DateTime.now().microsecondsSinceEpoch}.jpg';
+    final file = File(path);
+    await file.writeAsBytes([1, 2, 3]);
+    addTearDown(() async {
+      if (await file.exists()) await file.delete();
+    });
+    hardware.picture = XFile(path);
+    await service.warmup();
+    final problems = <ScanProblem>[];
+
+    await SnapController().captureAndAnalyze(
+      mealProvider: _Meals(),
+      settingsProvider: UserSettings.defaults(),
+      isPro: false,
+      connectivity: _Connectivity(),
+      onShowPaywall: () {},
+      onShowResult: () {},
+      onProblem: problems.add,
+    );
+
+    expect(problems, [ScanProblem.failed]);
+    expect(await file.exists(), isFalse);
   });
 }

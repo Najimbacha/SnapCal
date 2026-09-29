@@ -294,16 +294,14 @@ class SnapController {
 
     HapticFeedback.mediumImpact();
 
+    XFile? imageFile;
     try {
-      final XFile imageFile = await camera.takePicture().timeout(
-        TimeoutPolicy.camera,
-      );
+      imageFile = await camera.takePicture().timeout(TimeoutPolicy.camera);
       if (!_isCurrent(op)) return;
       final bytes = await imageFile.readAsBytes().timeout(
         TimeoutPolicy.gallery,
       );
       final prepared = await _prepare(bytes);
-      unawaited(_deleteQuietly(imageFile));
       if (!_isCurrent(op)) return;
       _capturedImageBytes = prepared;
     } on UnsupportedImageException {
@@ -313,6 +311,8 @@ class SnapController {
       debugPrint('Camera capture failed: $e');
       _endAttempt(op, ScanProblem.failed, onProblem);
       return;
+    } finally {
+      if (imageFile != null) await _deleteQuietly(imageFile);
     }
     if (!_isCurrent(op)) return;
 
