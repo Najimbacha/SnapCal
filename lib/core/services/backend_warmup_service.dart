@@ -49,6 +49,9 @@ class BackendWarmupService {
       // Append rather than Uri.resolve('/startup'): like every other caller of
       // the proxy URL, keep any path prefix the base URL carries.
       final base = _backendUrl().replaceAll(RegExp(r'/+$'), '');
+      // Cloud Run keeps a minimum instance running, so there is nothing to
+      // wake; only a host that sleeps when idle (the Render fallback) needs it.
+      if (Uri.parse(base).host.endsWith('.run.app')) return Future.value();
       url = '$base/startup';
     } catch (error) {
       debugPrint('⚠️ Backend warmup skipped: $error');

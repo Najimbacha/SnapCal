@@ -127,15 +127,16 @@ class AppInitializer {
   }
 
   static Future<void> _initBackgroundServices() async {
-    // This can legitimately take longer than the optional-service timeout when
-    // the host is asleep. It owns its timeout and failure handling, and must
-    // not delay the other background services.
-    unawaited(BackendWarmupService.instance.prewarm());
-
     await _runOptionalBackgroundService(
       'Remote config init',
       () => ConfigService().init().timeout(const Duration(seconds: 10)),
     );
+
+    // Only after Remote Config: before it the proxy URL is the built-in Render
+    // default, not the backend scans actually use. This can legitimately take
+    // longer than the optional-service timeout when the host is asleep, so it
+    // owns its timeout and failure handling and must not delay other services.
+    unawaited(BackendWarmupService.instance.prewarm());
 
     await Future.wait([
       _runOptionalBackgroundService('Scan gate init', ScanGateService().init),

@@ -81,6 +81,35 @@ void main() {
     },
   );
 
+  for (final base in [
+    'https://snapcal-api-s3fceoql4q-uc.a.run.app',
+    'https://snapcal-api-s3fceoql4q-uc.a.run.app/',
+  ]) {
+    test('an always-warm Cloud Run host is not probed: $base', () async {
+      var calls = 0;
+      final service = BackendWarmupService(
+        backendUrl: () => base,
+        probe: (_) async => calls++,
+      );
+
+      await service.prewarm();
+
+      expect(calls, 0);
+    });
+  }
+
+  test('a sleeping host is still probed', () async {
+    var calls = 0;
+    final service = BackendWarmupService(
+      backendUrl: () => 'https://snapcal-mxh9.onrender.com',
+      probe: (_) async => calls++,
+    );
+
+    await service.prewarm();
+
+    expect(calls, 1);
+  });
+
   test('equivalent URL spellings share one warmup', () async {
     var backend = 'https://example.test/';
     var calls = 0;
