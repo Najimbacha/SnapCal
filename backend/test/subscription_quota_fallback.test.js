@@ -41,6 +41,7 @@ test('quota checks force a RevenueCat recheck before blocking a paying user', as
   const today = new Date().toISOString().slice(0, 10);
   let revenueCatCalls = 0;
   let usageWrites = 0;
+  let lastWrite = null;
 
   db.collection = (name) => ({
     doc: (id) => refFor(`${name}/${id}`),
@@ -59,7 +60,7 @@ test('quota checks force a RevenueCat recheck before blocking a paying user', as
         }),
       };
     },
-    set: () => { usageWrites += 1; },
+    set: (ref, update) => { usageWrites += 1; lastWrite = update; },
   });
   axios.get = async () => {
     revenueCatCalls += 1;
@@ -82,7 +83,11 @@ test('quota checks force a RevenueCat recheck before blocking a paying user', as
     const claim = await claimAiTextQuota('payer-at-free-limit');
     assert.equal(claim.isPremium, true);
     assert.equal(revenueCatCalls, 1);
-    assert.equal(usageWrites, 0, 'Pro users should not consume free AI quota');
+    // Pro counts only against its own fair-use counter, never the free quota.
+    assert.equal(usageWrites, 1);
+    assert.equal(lastWrite.proAiRequestsUsed, 1);
+    assert.equal('aiRequestsUsed' in lastWrite, false, 'Pro users should not consume free AI quota');
+    assert.equal('aiMessagesUsed' in lastWrite, false);
   } finally {
     db.collection = originalCollection;
     db.runTransaction = originalRunTransaction;

@@ -41,6 +41,20 @@ const FREE_DAILY_AI_MESSAGES = Number(process.env.FREE_DAILY_AI_MESSAGES || 1);
 // draws on this, so cost stays bounded whatever the app sends. The coach's
 // own limit above sits inside it.
 const FREE_DAILY_AI_REQUESTS = Number(process.env.FREE_DAILY_AI_REQUESTS || 30);
+// Pro is unlimited in the product, not on the provider's invoice. These daily
+// fair-use ceilings sit far above real use; they exist so a stolen or scripted
+// Pro account cannot spend without limit. Over the ceiling is a 429 (try again
+// tomorrow), never a 402, which the app answers with a paywall.
+function positiveIntEnv(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+const PRO_DAILY_SCANS = positiveIntEnv('PRO_DAILY_SCANS', 100);
+const PRO_DAILY_AI_REQUESTS = positiveIntEnv('PRO_DAILY_AI_REQUESTS', 200);
+function proFairUseError(kind) {
+  return Object.assign(new Error('pro-fair-use-exceeded'), { code: 429, kind });
+}
+const PRO_FAIR_USE_MESSAGE = 'Daily fair-use limit reached. Please try again tomorrow.';
 // Fail closed: App Check is ON unless explicitly disabled. A misspelled or
 // unset variable must never silently disable the control (BUG-006).
 const REQUIRE_APP_CHECK = process.env.REQUIRE_APP_CHECK !== 'false';
@@ -621,10 +635,19 @@ async function claimAiTextQuota(uid, options = {}) {
 
       const subscription = subSnap.exists ? subSnap.data() : {};
       const isPremium = verifiedEntitlement?.isActive === true || isSubscriptionDataActive(subscription);
-      if (isPremium) return { isPremium: true };
-
       const usage = useSnap.exists ? useSnap.data() : {};
       const dayKey = currentDayKey();
+      if (isPremium) {
+        const proUsed = usage.proAiDayKey === dayKey ? Number(usage.proAiRequestsUsed || 0) : 0;
+        if (proUsed >= PRO_DAILY_AI_REQUESTS) throw proFairUseError('pro_ai_fair_use');
+        tx.set(useRef, {
+          proAiDayKey: dayKey,
+          proAiRequestsUsed: proUsed + 1,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        return { isPremium: true, dayKey };
+      }
+
       const sameDay = usage.aiDayKey === dayKey;
       const requestsUsed = sameDay ? Number(usage.aiRequestsUsed || 0) : 0;
       const coachUsed = sameDay ? Number(usage.aiMessagesUsed || 0) : 0;
@@ -655,12 +678,22 @@ async function claimAiTextQuota(uid, options = {}) {
 // Best-effort refund when the AI call fails after a successful claim, so a
 // provider outage does not use up a free user's allowance.
 async function refundAiTextQuota(uid, claim) {
-  if (!claim || claim.isPremium) return;
+  if (!claim) return;
   try {
     await db.runTransaction(async (tx) => {
       const useRef = usageDoc(uid);
       const useSnap = await tx.get(useRef);
       const usage = useSnap.exists ? useSnap.data() : {};
+      if (claim.isPremium) {
+        const proUsed = Number(usage.proAiRequestsUsed || 0);
+        if (usage.proAiDayKey === claim.dayKey && proUsed > 0) {
+          tx.set(useRef, {
+            proAiRequestsUsed: proUsed - 1,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
+        }
+        return;
+      }
       if (usage.aiDayKey !== claim.dayKey) return;
       const update = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
       const requestsUsed = Number(usage.aiRequestsUsed || 0);
@@ -962,6 +995,17 @@ async function getPremiumStatus(uid) {
   };
 }
 
+// Fields to merge for a Pro user's daily scan counter, or nothing for anyone
+// else. Throws the 429 fair-use error at the ceiling, inside the claim's
+// transaction, so parallel requests cannot slip past it.
+function proDailyScanUpdate(usage, isPremium) {
+  if (!isPremium) return {};
+  const dayKey = currentDayKey();
+  const used = usage.proScanDayKey === dayKey ? Number(usage.proScansToday || 0) : 0;
+  if (used >= PRO_DAILY_SCANS) throw proFairUseError('pro_scan_fair_use');
+  return { proScanDayKey: dayKey, proScansToday: used + 1 };
+}
+
 async function claimScanQuota(uid, scanId, options = {}) {
   const verifiedEntitlement = options.verifiedEntitlement || await getEntitlementForQuota(uid, {
     forceRestCheck: options.forceRestCheck === true,
@@ -996,11 +1040,13 @@ async function claimScanQuota(uid, scanId, options = {}) {
       if (!isPremium && scansUsed >= freeAllowanceFor(usage, monthKey)) {
         throw Object.assign(new Error('quota-exceeded'), { code: 402 });
       }
+      const proDaily = proDailyScanUpdate(usage, isPremium);
 
       tx.set(useRef, {
         monthKey,
         scansUsed: scansUsed + 1,
         premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
+        ...proDaily,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
 
@@ -1048,15 +1094,17 @@ async function claimScanQuotaForScan(uid, options = {}) {
       if (!isPremium && scansUsed >= freeAllowanceFor(usage, monthKey)) {
         throw Object.assign(new Error('quota-exceeded'), { code: 402 });
       }
+      const proDaily = proDailyScanUpdate(usage, isPremium);
 
       tx.set(useRef, {
         monthKey,
         scansUsed: scansUsed + 1,
         premiumScansUsed: isPremium ? Number(usage.premiumScansUsed || 0) + 1 : Number(usage.premiumScansUsed || 0),
+        ...proDaily,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
 
-      return { isPremium, monthKey };
+      return { isPremium, monthKey, dayKey: currentDayKey() };
     });
   } catch (error) {
     const recovered = await retryQuotaAfterForcedEntitlement(uid, error, options, claimScanQuotaForScan);
@@ -1067,20 +1115,25 @@ async function claimScanQuotaForScan(uid, options = {}) {
 
 // Best-effort refund when the AI call fails after a successful claim, so a
 // broken provider does not consume a user's quota.
-async function refundScanQuota(uid, claimedMonthKey) {
+async function refundScanQuota(uid, claimedMonthKey, claim = null) {
   try {
     await db.runTransaction(async (tx) => {
       const useRef = usageDoc(uid);
       const useSnap = await tx.get(useRef);
       const usage = useSnap.exists ? useSnap.data() : {};
-      if (usage.monthKey !== claimedMonthKey) return;
+      const update = {};
       const scansUsed = Number(usage.scansUsed || 0);
-      if (scansUsed <= 0) return;
-      tx.set(useRef, {
-        monthKey: claimedMonthKey,
-        scansUsed: scansUsed - 1,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
+      if (usage.monthKey === claimedMonthKey && scansUsed > 0) {
+        update.monthKey = claimedMonthKey;
+        update.scansUsed = scansUsed - 1;
+      }
+      const proToday = Number(usage.proScansToday || 0);
+      if (claim?.isPremium && usage.proScanDayKey === claim.dayKey && proToday > 0) {
+        update.proScansToday = proToday - 1;
+      }
+      if (Object.keys(update).length === 0) return;
+      update.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+      tx.set(useRef, update, { merge: true });
     });
   } catch (error) {
     console.error('Scan quota refund failed:', error.message);
@@ -2246,6 +2299,10 @@ app.post('/api/food-scans/:scanId/process', authenticateToken, verifyAppCheck, s
       metrics.quotaDenials.inc({ kind: 'scan' });
       return safeError(res, 402, 'Scan limit reached.');
     }
+    if (error.code === 429) {
+      metrics.quotaDenials.inc({ kind: error.kind });
+      return safeError(res, 429, PRO_FAIR_USE_MESSAGE);
+    }
     if (error.code === 409) return safeError(res, 409, 'Scan is already processing.');
     return safeError(res, 404, 'Scan not found.');
   }
@@ -2402,6 +2459,32 @@ app.get('/api/premium-status', authenticateToken, verifyAppCheck, apiLimiter, as
 // scans return, this needs server-side proof the ad was watched, not the
 // client's word for it.
 
+// The client picks these numbers, so the server bounds what each can cost.
+// Ceilings are sized to the app's real callers: free-form text (coach, insights)
+// asks for at most 2048 tokens; only JSON mode, the weekly planner, needs 8192
+// tokens and 55 s. Anything malformed falls back to the default, not to NaN.
+function clampAiTextOptions(body) {
+  const requireJson = body.responseMimeType === 'application/json';
+  const tokenCeiling = requireJson ? 8192 : 2048;
+  const timeoutCeiling = requireJson ? 55000 : 30000;
+  const tokens = Number(body.maxOutputTokens);
+  const timeoutMs = Number(body.timeoutMs);
+  const temperature = typeof body.temperature === 'number' && Number.isFinite(body.temperature)
+    ? Math.min(Math.max(body.temperature, 0), 2)
+    : 0.7;
+  return {
+    maxOutputTokens: Number.isFinite(tokens) && tokens >= 1
+      ? Math.min(Math.floor(tokens), tokenCeiling)
+      : 2048,
+    responseMimeType: requireJson ? 'application/json' : undefined,
+    requireJson,
+    temperature,
+    timeout: Number.isFinite(timeoutMs) && timeoutMs >= 1000
+      ? Math.min(timeoutMs, timeoutCeiling)
+      : 25000,
+  };
+}
+
 app.post('/api/ai/text', authenticateToken, verifyAppCheck, apiLimiter, async (req, res) => {
   const body = req.body || {};
   if (!assertPlainObject(body) || typeof body.prompt !== 'string' || body.prompt.length < 1 || body.prompt.length > 12000) {
@@ -2419,18 +2502,16 @@ app.post('/api/ai/text', authenticateToken, verifyAppCheck, apiLimiter, async (r
         ? 'Daily AI coach limit reached. Upgrade to Pro for unlimited coaching.'
         : 'Daily AI limit reached. Upgrade to Pro for unlimited AI features.');
     }
+    if (error.code === 429) {
+      metrics.quotaDenials.inc({ kind: error.kind });
+      return safeError(res, 429, PRO_FAIR_USE_MESSAGE);
+    }
     console.error('AI quota claim failed:', error.message);
     return safeError(res, 500, 'AI request failed.');
   }
 
   try {
-    const textOptions = {
-      maxOutputTokens: Math.min(Number(body.maxOutputTokens || 2048), 8192),
-      responseMimeType: body.responseMimeType === 'application/json' ? 'application/json' : undefined,
-      requireJson: body.responseMimeType === 'application/json',
-      temperature: typeof body.temperature === 'number' ? body.temperature : 0.7,
-      timeout: Math.min(Number(body.timeoutMs || 25000), 55000),
-    };
+    const textOptions = clampAiTextOptions(body);
     const text = await coalesceTextRequest(req.user.uid, [body.prompt, textOptions],
       () => callAiText(body.prompt, textOptions));
     return res.status(200).json({ text });
@@ -2465,6 +2546,10 @@ app.post('/api/ai/image', authenticateToken, verifyAppCheck, scanLimiter, async 
       metrics.quotaDenials.inc({ kind: 'scan' });
       return safeError(res, 402, 'Scan limit reached.');
     }
+    if (error.code === 429) {
+      metrics.quotaDenials.inc({ kind: error.kind });
+      return safeError(res, 429, PRO_FAIR_USE_MESSAGE);
+    }
     console.error('Image quota claim failed:', error.message);
     return safeError(res, 500, 'AI image request failed.');
   }
@@ -2473,7 +2558,7 @@ app.post('/api/ai/image', authenticateToken, verifyAppCheck, scanLimiter, async 
     const text = await callAiWithImage(body.image, cleanLanguage(body.language || 'en'), body.prompt);
     return res.status(200).json({ text });
   } catch (error) {
-    await refundScanQuota(req.user.uid, claim.monthKey);
+    await refundScanQuota(req.user.uid, claim.monthKey, claim);
     console.error('AI image request failed:', error.message);
     return safeError(res, 500, 'AI image request failed.');
   }
@@ -2792,6 +2877,10 @@ app.post('/v1/scan', authenticateToken, verifyAppCheck, scanLimiter, async (req,
     if (error.code === 402) {
       return safeError(res, 402, 'Scan limit reached.');
     }
+    if (error.code === 429) {
+      metrics.quotaDenials.inc({ kind: error.kind });
+      return safeError(res, 429, PRO_FAIR_USE_MESSAGE);
+    }
     console.error('Scan quota claim failed:', error.message);
     return safeError(res, 500, 'Could not start scan.');
   }
@@ -2839,7 +2928,7 @@ app.post('/v1/scan', authenticateToken, verifyAppCheck, scanLimiter, async (req,
     // The quota was consumed up-front; give it back when the scan itself
     // failed so users are not charged for our provider outages.
     recordScan(false, error.message, scanSeconds());
-    await refundScanQuota(uid, claim.monthKey);
+    await refundScanQuota(uid, claim.monthKey, claim);
     console.error(
       JSON.stringify({ event: 'scan.error', status: 502, error: error.message })
     );
@@ -2893,6 +2982,10 @@ app.post('/v1/text-scan', authenticateToken, verifyAppCheck, scanLimiter, async 
       metrics.quotaDenials.inc({ kind: 'scan' });
       return safeError(res, 402, 'Scan limit reached.');
     }
+    if (error.code === 429) {
+      metrics.quotaDenials.inc({ kind: error.kind });
+      return safeError(res, 429, PRO_FAIR_USE_MESSAGE);
+    }
     console.error('Text scan quota claim failed:', error.message);
     return safeError(res, 500, 'Could not start meal analysis.');
   }
@@ -2910,7 +3003,7 @@ app.post('/v1/text-scan', authenticateToken, verifyAppCheck, scanLimiter, async 
     // scarce free scan. Return an ordinary empty result so the app can offer
     // another try without treating it as a provider outage.
     if (foods.length === 0) {
-      await refundScanQuota(uid, claim.monthKey);
+      await refundScanQuota(uid, claim.monthKey, claim);
       recordScan(true, null, scanSeconds());
       return res.status(200).json({
         items: [],
@@ -2934,7 +3027,7 @@ app.post('/v1/text-scan', authenticateToken, verifyAppCheck, scanLimiter, async 
     return res.status(200).json(responseBody);
   } catch (error) {
     recordScan(false, error.message, scanSeconds());
-    await refundScanQuota(uid, claim.monthKey);
+    await refundScanQuota(uid, claim.monthKey, claim);
     console.error(JSON.stringify({
       event: 'text_scan.error',
       status: 502,
@@ -3232,6 +3325,9 @@ module.exports = {
   },
   claimAiTextQuota,
   refundAiTextQuota,
+  claimScanQuotaForScan,
+  refundScanQuota,
+  clampAiTextOptions,
   isProRevenueCatProductId,
   parseRevenueCatSubscriber,
 };
