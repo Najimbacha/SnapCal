@@ -100,6 +100,11 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       context,
       selectedDateMeals.where((m) => !_pendingDeletes.contains(m.id)).toList(),
     );
+    // A swiped meal waiting on its Undo is already off the list; the total
+    // leaves it out too instead of catching up seconds later.
+    final pendingCalories = selectedDateMeals
+        .where((m) => _pendingDeletes.contains(m.id))
+        .fold<int>(0, (total, m) => total + m.calories);
     // Meals that appeared since the last build of the same day -- added, or
     // brought back by Undo -- slide into place. Switching days slides the
     // whole diary instead.
@@ -222,7 +227,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
               _MealsHeading(
                 title: l10n.home_metric_meals,
                 announceChange: sameDay,
-                calories: selectedSummary.calories,
+                calories: selectedSummary.calories - pendingCalories,
                 calorieGoal:
                     isToday ? budget.goal : selectedSummary.calorieGoal,
                 activityBonus: isToday ? budget.activityBonus : 0,
@@ -1253,34 +1258,52 @@ class _MealGroupSection extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  // Shrinks, its label cut short, before a four-figure
+                  // total can push the row past the edge.
                   if (isCurrent)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(end: 6),
-                      child: _ScanMealButton(
-                        label: l10n.log_scan_meal_type(
-                          group.label.toLowerCase(),
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 6),
+                        child: _ScanMealButton(
+                          label: l10n.log_scan_meal_type(
+                            group.label.toLowerCase(),
+                          ),
+                          onTap: onScan,
                         ),
-                        onTap: onScan,
                       ),
                     ),
+                  // Capped and scaled down to fit: the Arabic unit is several
+                  // times the width of "kcal", and with large text it pushed
+                  // the row past the edge of a small phone.
                   if (!isEmpty)
-                    CountUpText(
-                      value: group.calories,
-                      duration: const Duration(milliseconds: 700),
-                      format: (v) => _formatInt(context, v),
-                      style: AppTypography.titleSmall.copyWith(
-                        color: context.textPrimaryColor,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                  if (!isEmpty)
-                    Text(
-                      ' ${l10n.settings_kcal_unit}',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: context.textMutedColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 110),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CountUpText(
+                              value: group.calories,
+                              duration: const Duration(milliseconds: 700),
+                              format: (v) => _formatInt(context, v),
+                              style: AppTypography.titleSmall.copyWith(
+                                color: context.textPrimaryColor,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              ' ${l10n.settings_kcal_unit}',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: context.textMutedColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   IconButton(

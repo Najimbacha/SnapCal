@@ -74,13 +74,16 @@ class MealAdapter extends TypeAdapter<Meal> {
       aiRationale: fields[14] as String?,
       originalCalories: fields[15] as int?,
       userCorrected: fields[16] as bool,
+      weightG: fields[17] as double?,
+      nutritionMatchId: fields[18] as String?,
+      nutritionPer100g: (fields[19] as Map?)?.cast<String, dynamic>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Meal obj) {
     writer
-      ..writeByte(17)
+      ..writeByte(20)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -114,7 +117,13 @@ class MealAdapter extends TypeAdapter<Meal> {
       ..writeByte(15)
       ..write(obj.originalCalories)
       ..writeByte(16)
-      ..write(obj.userCorrected);
+      ..write(obj.userCorrected)
+      ..writeByte(17)
+      ..write(obj.weightG)
+      ..writeByte(18)
+      ..write(obj.nutritionMatchId)
+      ..writeByte(19)
+      ..write(obj.nutritionPer100g);
   }
 
   @override

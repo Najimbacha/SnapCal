@@ -484,7 +484,8 @@ class MealRepository {
       for (final doc in page.docs) {
         await lease.write(() async {
           if (SyncQueueService().hasPendingFor(doc.reference.path)) return;
-          final cloudMeal = Meal.fromJson(doc.data());
+          final cloudMeal = _readCloudMeal(doc);
+          if (cloudMeal == null) return;
           final local = _mealsBox!.get(cloudMeal.id);
           final keepPhoto =
               cloudMeal.imageUri == null && local?.imageUri != null;
@@ -503,6 +504,19 @@ class MealRepository {
       await _indexBox!.put(_historyKey(uid), ['complete']);
       _emitTodaysMeals();
     });
+  }
+
+  /// The cloud rules check a meal's name and calories but not its date or
+  /// time, so an old record can lack them. One such record used to fail the
+  /// whole pull, on every attempt, and a new phone never got the history
+  /// after it.
+  Meal? _readCloudMeal(DocumentSnapshot<Map<String, dynamic>> doc) {
+    try {
+      return Meal.fromJson(doc.data()!);
+    } catch (e) {
+      debugPrint('Skipped unreadable cloud meal ${doc.id}: $e');
+      return null;
+    }
   }
 
   Future<void> _applyDeletedMeals(SessionLease lease, int lastSyncMs) async {

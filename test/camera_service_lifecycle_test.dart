@@ -174,6 +174,24 @@ void main() {
     },
   );
 
+  // permission_handler's codes: 0 denied, 1 granted, 4 permanently denied.
+  for (final (code, label) in [(0, 'denied'), (4, 'permanently denied')]) {
+    test('camera permission $label opens no camera and says why; granted '
+        'later, the camera starts', () async {
+      permission = Completer<int>()..complete(code);
+      await service.warmup();
+      expect(hardware.created, 0);
+      expect(service.isInitialized, isFalse);
+      expect(service.isInitializing, isFalse);
+      expect(service.error, contains('permission'));
+
+      permission = null;
+      await service.warmup();
+      expect(service.isInitialized, isTrue);
+      expect(service.error, isNull);
+    });
+  }
+
   test('failed initialization releases hardware before retry', () async {
     hardware.failInitialization = true;
     await service.warmup();
