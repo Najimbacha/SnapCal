@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:snapcal/core/utils/date_utils.dart' as app_date;
 import 'package:snapcal/data/models/meal.dart';
 import 'package:snapcal/data/models/user_settings.dart';
 import 'package:snapcal/data/repositories/meal_repository.dart';
@@ -138,6 +139,7 @@ Widget _host({Locale locale = const Locale('en'), _FakeMealLog? mealLog}) {
       settingsProvider.overrideWith(() => _FakeSettings()),
       waterProvider.overrideWith(() => _FakeWater()),
       activityProvider.overrideWith(() => _FakeActivity()),
+      stepGoalProvider.overrideWith((ref) async => 10000),
       proAccessProvider.overrideWithValue(const ProAccess(ProStatus.pro)),
       todaysMealsProvider.overrideWith((ref) => Stream.value(_meals())),
       mealRepositoryProvider.overrideWith(
@@ -189,12 +191,12 @@ void main() {
     // Add food sits above the meals: a big search bar, then pills that
     // repeat frequently logged names.
     expect(find.byKey(const ValueKey('quick-add-search')), findsOneWidget);
-    expect(find.byKey(const ValueKey('quick-add-custom')), findsOneWidget);
+    expect(find.byKey(const ValueKey('quick-add-custom')), findsNothing);
     expect(find.text('Avocado toast and eggs'), findsWidgets);
     expect(find.text('Chicken rice bowl'), findsWidgets);
     expect(find.text('Greek yogurt and berries'), findsWidgets);
     // No floating scan dock, and no separate "Add manually": a food of
-    // your own is the Custom food pill or a meal's plus.
+    // your own is a meal's plus or "Add your own food" in the search.
     expect(find.byKey(const ValueKey('log-scan-meal')), findsNothing);
     expect(find.byKey(const ValueKey('log-add-manually')), findsNothing);
     // Every meal here has one food, so none offers "Save as routine".
@@ -210,11 +212,37 @@ void main() {
     expect(find.text('Daily health'), findsNothing);
     final health = find.byKey(const ValueKey('log-health-card'));
     expect(
-      find.descendant(of: health, matching: find.text('6,842')),
+      find.descendant(of: health, matching: find.text('6,842 / 10,000')),
       findsOneWidget,
     );
     expect(
       find.descendant(of: health, matching: find.text('PRO')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('only the meal that fits the time of day gets a scan button', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(_host());
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final current = app_date.DateUtils.suggestedMealType().toLowerCase();
+    final button = find.byKey(
+      const ValueKey('log-scan-current'),
+      skipOffstage: false,
+    );
+    expect(button, findsOneWidget);
+    expect(
+      find.descendant(
+        of: button,
+        matching: find.text('Scan $current', skipOffstage: false),
+        skipOffstage: false,
+      ),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

@@ -3417,6 +3417,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get log_metric_steps => 'Pas';
 
   @override
+  String get log_empty_today_hint =>
+      'Rien d\'enregistré aujourd\'hui. Touchez le bouton de scan pour ajouter votre premier repas.';
+
+  @override
+  String log_scan_meal_type(String meal) {
+    return 'Scanner : $meal';
+  }
+
+  @override
   String get log_metric_calories_intake => 'Calories consommées';
 
   @override
@@ -5103,6 +5112,11 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String quick_add_added(String food) {
     return '$food ajouté';
+  }
+
+  @override
+  String quick_add_added_to(String food, String meal) {
+    return '$food ajouté ($meal)';
   }
 
   @override

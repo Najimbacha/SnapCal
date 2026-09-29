@@ -3351,6 +3351,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get log_metric_steps => 'Steps';
 
   @override
+  String get log_empty_today_hint =>
+      'Nothing logged yet today. Tap the scan button to log your first meal.';
+
+  @override
+  String log_scan_meal_type(String meal) {
+    return 'Scan $meal';
+  }
+
+  @override
   String get log_metric_calories_intake => 'Calories';
 
   @override
@@ -5015,6 +5024,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String quick_add_added(String food) {
     return '$food added';
+  }
+
+  @override
+  String quick_add_added_to(String food, String meal) {
+    return '$food added to $meal';
   }
 
   @override

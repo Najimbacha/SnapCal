@@ -37,8 +37,8 @@ class QuickAddFoods extends ConsumerStatefulWidget {
     this.leading = const [],
   });
 
-  /// Pills shown in the row after "Custom food", before the food
-  /// suggestions: the user's saved routines.
+  /// Pills shown first in the row, before the food suggestions: the user's
+  /// saved routines.
   final List<Widget> leading;
 
   /// Opens the form for a food of the user's own, with [name] filled in
@@ -125,8 +125,8 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
           ),
         ),
         const SizedBox(height: 10),
-        // One row of small pills: a food of your own, your routines, then
-        // the foods you eat most.
+        // One row of small pills: your routines, then the foods you eat
+        // most. A food of your own is a meal's plus, or the search's foot.
         SizedBox(
           height: 40,
           child: ListView(
@@ -136,7 +136,6 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
             clipBehavior: Clip.none,
             children: [
               for (final pill in [
-                _CustomFoodPill(onTap: () => widget.onCustomFood('')),
                 ...widget.leading,
                 for (final suggestion in suggestions)
                   _QuickFoodPill(
@@ -265,6 +264,13 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
     );
   }
 
+  String _mealLabel(AppLocalizations l10n) => switch (widget.mealType) {
+    'Breakfast' => l10n.result_meal_breakfast,
+    'Lunch' => l10n.result_meal_lunch,
+    'Dinner' => l10n.result_meal_dinner,
+    _ => l10n.result_meal_snack,
+  };
+
   void _showAdded(String foodName, String mealId) {
     if (!mounted) return;
     final l10n = AppLocalizations.of(context)!;
@@ -273,7 +279,7 @@ class _QuickAddFoodsState extends ConsumerState<QuickAddFoods> {
     showAppToast(
       messenger,
       kind: ToastKind.success,
-      title: l10n.quick_add_added(foodName),
+      title: l10n.quick_add_added_to(foodName, _mealLabel(l10n)),
       actionLabel: l10n.quick_add_undo,
       onAction: () => widget.onUndo(mealId),
     );
@@ -1032,50 +1038,6 @@ String _mealIdentity(Meal meal) =>
 String _normalizedFoodName(String value) =>
     value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
 
-/// The first pill in the row: a food of the user's own.
-class _CustomFoodPill extends StatelessWidget {
-  const _CustomFoodPill({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final primary = context.primaryColor;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: const ValueKey('quick-add-custom'),
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(99),
-        child: Container(
-          height: 40,
-          padding: const EdgeInsetsDirectional.fromSTEB(10, 0, 14, 0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(99),
-            border: Border.all(color: primary.withValues(alpha: 0.5)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(WaznIcons.plus, size: 16, color: primary),
-              const SizedBox(width: 6),
-              Text(
-                l10n.log_custom_food,
-                style: AppTypography.labelLarge.copyWith(
-                  color: primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// A food the user eats often: its name and calories. One tap adds it --
 /// a food from the list asks for the portion first -- and the + ticks.
 class _QuickFoodPill extends StatelessWidget {
@@ -1128,7 +1090,7 @@ class _QuickFoodPill extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '$calories',
+                  AppLocalizations.of(context)!.quick_add_calories(calories),
                   style: AppTypography.labelMedium.copyWith(
                     color: context.textMutedColor,
                     fontWeight: FontWeight.w600,

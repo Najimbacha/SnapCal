@@ -199,6 +199,7 @@ Widget _host(
       settingsProvider.overrideWith(() => _FakeSettings()),
       waterProvider.overrideWith(() => _FakeWater()),
       activityProvider.overrideWith(() => _FakeActivity()),
+      stepGoalProvider.overrideWith((ref) async => 10000),
       proAccessProvider.overrideWithValue(
         ProAccess(free ? ProStatus.free : ProStatus.pro),
       ),
@@ -240,13 +241,13 @@ void main() {
 
     final card = find.byKey(const ValueKey('routine-r1'));
     expect(card, findsOneWidget);
-    // A pill in the Add food row, right after "Custom food".
-    final custom = tester.getRect(
-      find.byKey(const ValueKey('quick-add-custom')),
+    // A pill at the very start of the Add food row.
+    final row = tester.getRect(
+      find.byKey(const ValueKey('quick-add-carousel')),
     );
     final pill = tester.getRect(card);
-    expect(pill.top, closeTo(custom.top, 1));
-    expect(pill.left, greaterThan(custom.right));
+    expect(pill.top, closeTo(row.top, 1));
+    expect(pill.left, closeTo(row.left, 1));
     expect(pill.height, 40);
 
     await tester.tap(card);

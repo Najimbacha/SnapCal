@@ -228,6 +228,18 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                 activityBonus: isToday ? budget.activityBonus : 0,
               ),
               const SizedBox(height: 8),
+              if (isToday && groups.every((g) => g.meals.isEmpty))
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(2, 0, 2, 10),
+                  child: Text(
+                    l10n.log_empty_today_hint,
+                    key: const ValueKey('log-empty-hint'),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: context.textSecondaryColor,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
               _DaySwitch(
                 day: selectedDate,
                 direction: _dayDirection,
@@ -237,6 +249,8 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                   leaving: _leaving,
                   onLeft: _left,
                   isPro: isPro,
+                  currentMeal: isToday ? _suggestedMealType() : null,
+                  onScan: () => context.go('/snap'),
                   onAdd:
                       (mealType) => _showCustomFood(
                         dateString: selectedDate,
@@ -252,6 +266,10 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                 waterMl: selectedSummary.waterMl,
                 waterGoal: selectedSummary.waterGoal,
                 steps: selectedSummary.steps,
+                stepGoal:
+                    ref.watch(stepGoalProvider).valueOrNull ??
+                    selectedSummary.stepGoal,
+                onWaterQuickAdd: isToday ? _quickAddWater : null,
                 onWaterTap:
                     isToday
                         ? () => showHydrationSheet(context)
@@ -270,6 +288,13 @@ class _LogScreenState extends ConsumerState<LogScreen> {
         ],
       ),
     );
+  }
+
+  static const _quickWaterMl = 250;
+
+  Future<void> _quickAddWater() async {
+    HapticFeedback.lightImpact();
+    await ref.read(waterProvider.notifier).addWater(_quickWaterMl);
   }
 
   Future<void> _showDatePicker({
@@ -1006,9 +1031,16 @@ class _MealDiaryCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onSaveRoutine,
+    required this.onScan,
+    this.currentMeal,
   });
 
   final List<_MealGroupData> groups;
+
+  /// The meal that fits the time of day (today only): it is drawn brighter
+  /// and gets a scan button.
+  final String? currentMeal;
+  final VoidCallback onScan;
 
   /// Saves a meal's foods as a routine.
   final ValueChanged<_MealGroupData> onSaveRoutine;
@@ -1045,6 +1077,9 @@ class _MealDiaryCard extends StatelessWidget {
               leaving: leaving,
               onLeft: onLeft,
               isPro: isPro,
+              isCurrent: groups[index].key == currentMeal,
+              dimmed: currentMeal != null && groups[index].key != currentMeal,
+              onScan: onScan,
               onAdd: () => onAdd(groups[index].key),
               onSaveRoutine: () => onSaveRoutine(groups[index]),
               onEdit: onEdit,
@@ -1147,9 +1182,17 @@ class _MealGroupSection extends StatelessWidget {
     required this.onAdd,
     required this.onEdit,
     required this.onDelete,
+    required this.onScan,
+    this.isCurrent = false,
+    this.dimmed = false,
   });
 
   final VoidCallback onSaveRoutine;
+  final VoidCallback onScan;
+  final bool isCurrent;
+
+  /// Another meal is the current one, so this one stays calm.
+  final bool dimmed;
   final _MealGroupData group;
   final Set<String> arrived;
   final Set<String> leaving;
@@ -1169,67 +1212,91 @@ class _MealGroupSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: 44,
-            child: Row(
-              children: [
-                Icon(
-                  group.icon,
-                  size: 18,
-                  color:
-                      isEmpty
-                          ? group.accent.withValues(alpha: 0.6)
-                          : group.accent,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    group.label,
-                    style: AppTypography.titleMedium.copyWith(
-                      color:
-                          isEmpty
-                              ? context.textMutedColor
-                              : context.textPrimaryColor,
-                      fontWeight: isEmpty ? FontWeight.w600 : FontWeight.w700,
-                      fontSize: 15,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          InkWell(
+            onTap: onAdd,
+            excludeFromSemantics: true,
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  Icon(
+                    group.icon,
+                    size: 18,
+                    color:
+                        isEmpty
+                            ? group.accent.withValues(alpha: 0.6)
+                            : group.accent,
                   ),
-                ),
-                if (!isEmpty)
-                  CountUpText(
-                    value: group.calories,
-                    duration: const Duration(milliseconds: 700),
-                    format: (v) => _formatInt(context, v),
-                    style: AppTypography.titleSmall.copyWith(
-                      color: context.textPrimaryColor,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                if (!isEmpty)
-                  Text(
-                    ' ${l10n.settings_kcal_unit}',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: context.textMutedColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      group.label,
+                      style: AppTypography.titleMedium.copyWith(
+                        color:
+                            isCurrent
+                                ? context.primaryColor
+                                : isEmpty
+                                ? context.textMutedColor
+                                : dimmed
+                                ? context.textSecondaryColor
+                                : context.textPrimaryColor,
+                        fontWeight:
+                            isCurrent
+                                ? FontWeight.w800
+                                : isEmpty || dimmed
+                                ? FontWeight.w600
+                                : FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                IconButton(
-                  key: ValueKey('log-add-${group.key.toLowerCase()}'),
-                  tooltip: l10n.log_add_meal_type(group.label),
-                  onPressed: onAdd,
-                  color: context.primaryColor,
-                  iconSize: 20,
-                  constraints: const BoxConstraints(
-                    minWidth: appMinimumTapTarget,
-                    minHeight: appMinimumTapTarget,
+                  if (isCurrent)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(end: 6),
+                      child: _ScanMealButton(
+                        label: l10n.log_scan_meal_type(
+                          group.label.toLowerCase(),
+                        ),
+                        onTap: onScan,
+                      ),
+                    ),
+                  if (!isEmpty)
+                    CountUpText(
+                      value: group.calories,
+                      duration: const Duration(milliseconds: 700),
+                      format: (v) => _formatInt(context, v),
+                      style: AppTypography.titleSmall.copyWith(
+                        color: context.textPrimaryColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  if (!isEmpty)
+                    Text(
+                      ' ${l10n.settings_kcal_unit}',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: context.textMutedColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  IconButton(
+                    key: ValueKey('log-add-${group.key.toLowerCase()}'),
+                    tooltip: l10n.log_add_meal_type(group.label),
+                    onPressed: onAdd,
+                    color: context.primaryColor,
+                    iconSize: 20,
+                    constraints: const BoxConstraints(
+                      minWidth: appMinimumTapTarget,
+                      minHeight: appMinimumTapTarget,
+                    ),
+                    icon: const Icon(WaznIcons.plus),
                   ),
-                  icon: const Icon(WaznIcons.plus),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           if (!isEmpty)
@@ -1285,6 +1352,44 @@ class _MealGroupSection extends StatelessWidget {
   }
 }
 
+/// A small pill on the current meal's row that opens the scanner.
+class _ScanMealButton extends StatelessWidget {
+  const _ScanMealButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = context.primaryColor;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 130),
+      child: Material(
+        color: color.withValues(alpha: 0.12),
+        shape: const StadiumBorder(),
+        child: InkWell(
+          key: const ValueKey('log-scan-current'),
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.labelMedium.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Water and steps side by side in one card, with the Pro protein line
 /// under them when there is one.
 class _DailyHealthCard extends StatelessWidget {
@@ -1292,14 +1397,20 @@ class _DailyHealthCard extends StatelessWidget {
     required this.waterMl,
     required this.waterGoal,
     required this.steps,
+    required this.stepGoal,
     required this.onWaterTap,
     required this.onStepsTap,
+    this.onWaterQuickAdd,
     this.protein,
   });
 
   final int waterMl;
   final int waterGoal;
   final int steps;
+  final int stepGoal;
+
+  /// Adds one glass in a tap; null on a past day, where water cannot be added.
+  final VoidCallback? onWaterQuickAdd;
   final VoidCallback onWaterTap;
   final VoidCallback onStepsTap;
   final Widget? protein;
@@ -1325,6 +1436,35 @@ class _DailyHealthCard extends StatelessWidget {
                     value:
                         '${_formatLiters(context, waterMl)} / ${_formatLiters(context, waterGoal)} L',
                     onTap: onWaterTap,
+                    trailing:
+                        onWaterQuickAdd == null
+                            ? null
+                            : Tooltip(
+                              message: l10n.water_add_amount(250),
+                              child: InkResponse(
+                                key: const ValueKey('log-water-quick-add'),
+                                onTap: onWaterQuickAdd,
+                                radius: 24,
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  margin: const EdgeInsetsDirectional.only(
+                                    start: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: context.primaryColor.withValues(
+                                      alpha: 0.14,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    WaznIcons.plus,
+                                    size: 18,
+                                    color: context.primaryColor,
+                                  ),
+                                ),
+                              ),
+                            ),
                   ),
                 ),
                 Container(width: 1, height: 40, color: line),
@@ -1332,7 +1472,8 @@ class _DailyHealthCard extends StatelessWidget {
                   child: _HealthValue(
                     icon: WaznIcons.steps,
                     label: l10n.log_metric_steps,
-                    value: _formatInt(context, steps),
+                    value:
+                        '${_formatInt(context, steps)} / ${_formatInt(context, stepGoal)}',
                     onTap: onStepsTap,
                   ),
                 ),
@@ -1355,12 +1496,14 @@ class _HealthValue extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onTap,
+    this.trailing,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final VoidCallback onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -1412,6 +1555,7 @@ class _HealthValue extends StatelessWidget {
                 ],
               ),
             ),
+            if (trailing != null) trailing!,
           ],
         ),
       ),

@@ -123,7 +123,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('quick-food-old')));
     await tester.pumpAndSettle();
     expect(repeated, 1);
-    expect(find.text('Chicken biryani added'), findsOneWidget);
+    expect(find.text('Chicken biryani added to Lunch'), findsOneWidget);
 
     await tester.tap(find.text('Undo'));
     await tester.pumpAndSettle();
@@ -194,11 +194,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('quick-food-add-button')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('quick-food-search-field')), findsNothing);
-    expect(find.text('Chicken biryani added'), findsOneWidget);
+    expect(find.text('Chicken biryani added to Lunch'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a food of your own is one tap from the row and from search, '
+  testWidgets('a food of your own is one tap from search, '
       'which passes on what was typed', (tester) async {
     final asked = <String>[];
     await tester.pumpWidget(
@@ -211,9 +211,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('quick-add-custom')));
-    await tester.pump();
-    expect(asked, ['']);
+    expect(find.byKey(const ValueKey('quick-add-custom')), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('quick-add-search')));
     await tester.pumpAndSettle();
@@ -225,7 +223,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('quick-food-add-own')));
     await tester.pumpAndSettle();
-    expect(asked, ['', 'Nani’s dal']);
+    expect(asked, ['Nani’s dal']);
     expect(find.byKey(const ValueKey('quick-food-search-field')), findsNothing);
     expect(tester.takeException(), isNull);
   });

@@ -6138,6 +6138,18 @@ abstract class AppLocalizations {
   /// **'Steps'**
   String get log_metric_steps;
 
+  /// No description provided for @log_empty_today_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing logged yet today. Tap the scan button to log your first meal.'**
+  String get log_empty_today_hint;
+
+  /// No description provided for @log_scan_meal_type.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan {meal}'**
+  String log_scan_meal_type(String meal);
+
   /// No description provided for @log_metric_calories_intake.
   ///
   /// In en, this message translates to:
@@ -9011,6 +9023,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{food} added'**
   String quick_add_added(String food);
+
+  /// No description provided for @quick_add_added_to.
+  ///
+  /// In en, this message translates to:
+  /// **'{food} added to {meal}'**
+  String quick_add_added_to(String food, String meal);
 
   /// No description provided for @quick_add_undo.
   ///
