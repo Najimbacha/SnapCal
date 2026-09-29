@@ -13,6 +13,7 @@ import '../core/services/config_service.dart';
 import '../core/services/session_cleanup_service.dart';
 import '../core/services/session_data_guard.dart';
 import '../data/services/scan_gate_service.dart';
+import '../data/services/background_sync_tracker.dart';
 import '../data/services/subscription_service.dart';
 import '../data/services/sync_queue_service.dart';
 import 'assistant_provider.dart';
@@ -390,6 +391,9 @@ class AuthNotifier extends _$AuthNotifier {
   /// Anything still queued belongs to the account being left, and the wipe
   /// that follows clears the queue with everything else.
   Future<void> _flushQueueBeforeLeaving() async {
+    await BackgroundSyncTracker().waitForIdle().timeout(
+      const Duration(seconds: 10),
+    );
     await SyncQueueService().flushDue().timeout(const Duration(seconds: 8));
     final queue = SyncQueueService();
     if (queue.hasPendingOperations) {

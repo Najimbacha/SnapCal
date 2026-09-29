@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../models/meal_template.dart';
 import '../services/cloud_record_sync.dart';
+import '../services/background_sync_tracker.dart';
 
 class TemplateRepository {
   static const String _boxName = 'templates_box';
@@ -73,6 +74,7 @@ class TemplateRepository {
   }
 
   void _inBackground(Future<void> write) {
+    BackgroundSyncTracker().track(write);
     unawaited(
       write.catchError((Object e) => debugPrint('Template sync failed: $e')),
     );

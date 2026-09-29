@@ -6,6 +6,7 @@ import '../../data/services/app_review_service.dart';
 import '../../data/services/premium_gate_service.dart';
 import '../../data/services/promotional_paywall_service.dart';
 import '../../data/services/scan_gate_service.dart';
+import '../../data/services/background_sync_tracker.dart';
 import '../../data/models/meal.dart';
 import '../../data/models/user_settings.dart';
 import '../../data/models/water_log.dart';
@@ -95,6 +96,7 @@ class SessionCleanupService {
       boxes.add(box);
     }
     await _clearGatePreferences();
+    BackgroundSyncTracker().discardSessionState();
 
     if (wipeSecurityKeys) {
       for (final box in boxes) {

@@ -10,6 +10,7 @@ import '../../core/resilience/timeout_policy.dart';
 import '../models/meal.dart';
 import '../../core/constants/app_constants.dart';
 import '../services/sync_queue_service.dart';
+import '../services/background_sync_tracker.dart';
 
 /// Repository for managing meal data in Hive and Firestore
 class MealRepository {
@@ -223,6 +224,7 @@ class MealRepository {
   /// and an edit or delete sat on its spinner as long. Water already worked
   /// this way.
   void _inBackground(Future<void> write) {
+    BackgroundSyncTracker().track(write);
     unawaited(
       write.catchError((Object e) => debugPrint('Meal sync failed: $e')),
     );

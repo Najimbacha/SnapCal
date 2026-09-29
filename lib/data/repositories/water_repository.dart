@@ -6,6 +6,7 @@ import '../../core/services/security_service.dart';
 import '../models/water_log.dart';
 import '../../core/constants/app_constants.dart';
 import '../services/cloud_record_sync.dart';
+import '../services/background_sync_tracker.dart';
 
 /// Repository for managing water intake data in Hive, synced to the account
 /// through [CloudRecordSync].
@@ -77,6 +78,7 @@ class WaterRepository {
   /// Cloud writes run in the background: logging water is a single tap that
   /// must not wait on the network. A failed write is queued by [_cloud].
   void _inBackground(Future<void> write) {
+    BackgroundSyncTracker().track(write);
     unawaited(
       write.catchError((Object e) => debugPrint('Water sync failed: $e')),
     );
