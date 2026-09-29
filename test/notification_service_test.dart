@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snapcal/data/services/notification_service.dart';
 
@@ -6,6 +8,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const timeZoneChannel = MethodChannel('snapcal/timezone');
+  const notificationsChannel = MethodChannel(
+    'dexterous.com/flutter/local_notifications',
+  );
   late NotificationService service;
 
   setUp(() {
@@ -16,8 +21,36 @@ void main() {
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(timeZoneChannel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(notificationsChannel, null);
+    debugDefaultTargetPlatformOverride = null;
     service.resetForTesting();
   });
+
+  test(
+    'notification initialization retries after a platform failure',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      AndroidFlutterLocalNotificationsPlugin.registerWith();
+      var initializeCalls = 0;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(notificationsChannel, (call) async {
+            if (call.method == 'initialize') {
+              initializeCalls++;
+              if (initializeCalls == 1) {
+                throw PlatformException(code: 'temporarily_unavailable');
+              }
+              return true;
+            }
+            return null;
+          });
+
+      await service.init();
+      await service.init();
+
+      expect(initializeCalls, 2);
+    },
+  );
 
   test(
     'timezone initialization uses platform timezone when available',

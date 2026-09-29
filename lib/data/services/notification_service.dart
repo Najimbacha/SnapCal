@@ -133,6 +133,9 @@ class NotificationService {
             ),
           );
     } catch (e, stack) {
+      // Do not permanently memoize a transient plugin/platform failure. The
+      // next startup/resume attempt must be able to initialize notifications.
+      _initFuture = null;
       debugPrint('⚠️ NotificationService: init failed: $e');
       debugPrint(stack.toString());
     }
