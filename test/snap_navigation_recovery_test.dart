@@ -17,13 +17,16 @@ import 'package:snapcal/screens/snap/snap_screen.dart';
 import 'package:snapcal/screens/snap/widgets/result_modal.dart';
 
 class _Controller extends SnapController {
-  _Controller({this.analyzing = false, this.problem});
+  _Controller({this.analyzing = false, this.capturing = false, this.problem});
   bool analyzing;
+  bool capturing;
   final CameraProblem? problem;
   int cancellations = 0;
   int initializations = 0;
   @override
   bool get isAnalyzing => analyzing;
+  @override
+  bool get isCapturing => capturing;
   @override
   CameraProblem? get cameraProblem => problem;
   @override
@@ -61,6 +64,7 @@ class _Controller extends SnapController {
   void cancelScan() {
     cancellations++;
     analyzing = false;
+    capturing = false;
     super.cancelScan();
   }
 }
@@ -147,6 +151,27 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
     expect(controller.initializations, 1);
+
+    await tester.pumpWidget(const SizedBox());
+    router.dispose();
+  });
+
+  testWidgets('backgrounding cancels an in-flight photo capture', (
+    tester,
+  ) async {
+    final controller = _Controller(capturing: true);
+    final router = await _open(tester, controller);
+    addTearDown(
+      () => tester.binding.handleAppLifecycleStateChanged(
+        AppLifecycleState.resumed,
+      ),
+    );
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+
+    expect(controller.cancellations, 1);
+    expect(controller.isCapturing, isFalse);
 
     await tester.pumpWidget(const SizedBox());
     router.dispose();

@@ -188,8 +188,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _startLaunchMode();
-    } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
+    } else {
+      // Disposing the camera while takePicture is pending makes the plugin
+      // complete with an error. Invalidate that operation first so returning
+      // to the app cannot display a stale capture-failed sheet.
+      if (_controller.isCapturing) _controller.cancelScan();
       CameraService().stop();
     }
   }
