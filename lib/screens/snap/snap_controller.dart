@@ -388,13 +388,6 @@ class SnapController {
     _capturedImageBytes = null;
     _photoTakenAt = null;
 
-    final gate = await _gate(connectivity, isPro);
-    if (!_isCurrent(op)) return;
-    if (gate != _Gate.open) {
-      _reportGate(gate, onShowPaywall, onProblem);
-      return;
-    }
-
     final XFile? imageFile;
     try {
       imageFile = await pickImage();
@@ -433,6 +426,16 @@ class SnapController {
       return;
     }
     if (!_isCurrent(op)) return;
+
+    // Match camera capture: keep a selected photo when offline so Try again
+    // can send it later without making the user reopen the picker.
+    final gate = await _gate(connectivity, isPro);
+    if (!_isCurrent(op)) return;
+    if (gate != _Gate.open) {
+      HapticFeedback.vibrate();
+      _endAttempt(op, ScanProblem.offline, onProblem);
+      return;
+    }
 
     await _analyze(
       op: op,

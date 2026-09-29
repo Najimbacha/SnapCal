@@ -37,6 +37,14 @@ class _Online implements ConnectivityService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _Offline implements ConnectivityService {
+  @override
+  Future<bool> refreshReachability({bool force = false}) async => false;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _Meals extends Fake implements MealLog {}
 
 Uint8List _jpeg({String? takenAt}) {
@@ -127,6 +135,25 @@ void main() {
       pending.complete(null);
       await first;
       expect(c.opened, 1);
+    });
+
+    test('an offline gallery photo is retained for retry', () async {
+      final c = _Gallery(() async => XFile.fromData(_jpeg()));
+      final problems = <ScanProblem>[];
+
+      await c.pickFromGallery(
+        mealProvider: _Meals(),
+        settingsProvider: UserSettings.defaults(),
+        isPro: false,
+        connectivity: _Offline(),
+        onShowPaywall: () {},
+        onShowResult: () {},
+        onProblem: problems.add,
+      );
+
+      expect(c.opened, 1);
+      expect(problems, [ScanProblem.offline]);
+      expect(c.canRetryLastPhoto, isTrue);
     });
   });
 
