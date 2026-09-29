@@ -85,6 +85,7 @@ Future<GoRouter> _open(
   _Controller controller, {
   _Meals? meals,
   Size size = const Size(390, 844),
+  SnapInitialMode initialMode = SnapInitialMode.food,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -99,7 +100,11 @@ Future<GoRouter> _open(
         routes: [
           GoRoute(
             path: '/snap',
-            builder: (_, _) => SnapScreen(controller: controller),
+            builder:
+                (_, _) => SnapScreen(
+                  controller: controller,
+                  initialMode: initialMode,
+                ),
           ),
         ],
       ),
@@ -142,6 +147,33 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
     expect(controller.initializations, 1);
+
+    await tester.pumpWidget(const SizedBox());
+    router.dispose();
+  });
+
+  testWidgets('barcode launch mode survives startup finishing in background', (
+    tester,
+  ) async {
+    final controller = _Controller();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    addTearDown(
+      () => tester.binding.handleAppLifecycleStateChanged(
+        AppLifecycleState.resumed,
+      ),
+    );
+
+    final router = await _open(
+      tester,
+      controller,
+      initialMode: SnapInitialMode.barcode,
+    );
+    expect(controller.isScanningBarcode, isFalse);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(controller.isScanningBarcode, isTrue);
+    expect(controller.initializations, 0);
 
     await tester.pumpWidget(const SizedBox());
     router.dispose();

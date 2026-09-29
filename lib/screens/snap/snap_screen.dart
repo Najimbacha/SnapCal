@@ -60,6 +60,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   /// A soft white flash as the photo is taken.
   late final AnimationController _flash;
   bool _hasInitializedOnce = false;
+  bool _launchModePending = true;
   bool _isTickerActive = true;
   bool _isSavingResult = false;
   String? _savedResultFingerprint;
@@ -104,6 +105,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   void didUpdateWidget(covariant SnapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialMode == widget.initialMode) return;
+    _launchModePending = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startLaunchMode();
     });
@@ -137,15 +139,19 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
 
   void _startLaunchMode() {
     if (!mounted || !_isTickerActive || !_appIsVisible || _resultOpen) return;
-    if (widget.initialMode == SnapInitialMode.barcode) {
-      _controller.isScanningBarcode = true;
-      return;
+    if (_launchModePending) {
+      _launchModePending = false;
+      if (widget.initialMode == SnapInitialMode.barcode) {
+        _controller.isScanningBarcode = true;
+        return;
+      }
+      if (_controller.isScanningBarcode) {
+        _controller.isScanningBarcode = false;
+        return;
+      }
     }
-    if (_controller.isScanningBarcode) {
-      _controller.isScanningBarcode = false;
-    } else {
-      _controller.initializeCamera();
-    }
+    if (_controller.isScanningBarcode) return;
+    _controller.initializeCamera();
   }
 
   /// Whether this screen is the one on show and wants the photo camera.
@@ -181,7 +187,7 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      if (_cameraWanted) _controller.initializeCamera();
+      _startLaunchMode();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       CameraService().stop();
