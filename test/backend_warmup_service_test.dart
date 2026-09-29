@@ -36,6 +36,18 @@ void main() {
     expect(calls, 1);
   });
 
+  test('warmup probes the lightweight startup endpoint', () async {
+    String? requestedUrl;
+    final service = BackendWarmupService(
+      backendUrl: () => 'https://example.test/api/',
+      probe: (url) async => requestedUrl = url,
+    );
+
+    await service.prewarm();
+
+    expect(requestedUrl, 'https://example.test/startup');
+  });
+
   test('failed warmup is silent and can be retried', () async {
     var calls = 0;
     final service = BackendWarmupService(

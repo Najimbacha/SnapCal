@@ -60,7 +60,9 @@ class BackendWarmupService {
   Future<void> _runProbe() async {
     final stopwatch = Stopwatch()..start();
     try {
-      await _probe(_backendUrl()).timeout(timeout);
+      final startupUrl =
+          Uri.parse(_backendUrl()).resolve('/startup').toString();
+      await _probe(startupUrl).timeout(timeout);
       _lastSuccess = _clock();
       debugPrint(
         '⚡ Backend warmup completed in ${stopwatch.elapsedMilliseconds}ms',
