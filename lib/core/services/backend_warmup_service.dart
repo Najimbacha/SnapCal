@@ -37,34 +37,45 @@ class BackendWarmupService {
   final Duration freshness;
   final Duration timeout;
 
-  Future<void>? _inFlight;
-  DateTime? _lastSuccess;
+  // State is per probed URL: the proxy URL changes once Remote Config loads
+  // (launch starts on the built-in default), and a warm host says nothing
+  // about a different one.
+  final Map<String, Future<void>> _inFlight = {};
+  final Map<String, DateTime> _lastSuccess = {};
 
   Future<void> prewarm() {
-    final lastSuccess = _lastSuccess;
-    if (lastSuccess != null && _clock().difference(lastSuccess) < freshness) {
-      return Future.value();
-    }
-
-    final running = _inFlight;
-    if (running != null) return running;
-
-    late final Future<void> tracked;
-    tracked = _runProbe().whenComplete(() {
-      if (identical(_inFlight, tracked)) _inFlight = null;
-    });
-    _inFlight = tracked;
-    return tracked;
-  }
-
-  Future<void> _runProbe() async {
-    final stopwatch = Stopwatch()..start();
+    final String url;
     try {
       // Append rather than Uri.resolve('/startup'): like every other caller of
       // the proxy URL, keep any path prefix the base URL carries.
       final base = _backendUrl().replaceAll(RegExp(r'/+$'), '');
-      await _probe('$base/startup').timeout(timeout);
-      _lastSuccess = _clock();
+      url = '$base/startup';
+    } catch (error) {
+      debugPrint('⚠️ Backend warmup skipped: $error');
+      return Future.value();
+    }
+
+    final lastSuccess = _lastSuccess[url];
+    if (lastSuccess != null && _clock().difference(lastSuccess) < freshness) {
+      return Future.value();
+    }
+
+    final running = _inFlight[url];
+    if (running != null) return running;
+
+    late final Future<void> tracked;
+    tracked = _runProbe(url).whenComplete(() {
+      if (identical(_inFlight[url], tracked)) _inFlight.remove(url);
+    });
+    _inFlight[url] = tracked;
+    return tracked;
+  }
+
+  Future<void> _runProbe(String url) async {
+    final stopwatch = Stopwatch()..start();
+    try {
+      await _probe(url).timeout(timeout);
+      _lastSuccess[url] = _clock();
       debugPrint(
         '⚡ Backend warmup completed in ${stopwatch.elapsedMilliseconds}ms',
       );

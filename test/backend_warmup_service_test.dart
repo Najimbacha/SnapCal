@@ -36,6 +36,66 @@ void main() {
     expect(calls, 1);
   });
 
+  test(
+    'a warm host does not suppress warming a different backend URL',
+    () async {
+      var backend = 'https://old.test';
+      final probed = <String>[];
+      final service = BackendWarmupService(
+        backendUrl: () => backend,
+        probe: (url) async => probed.add(url),
+      );
+
+      await service.prewarm();
+      backend = 'https://new.test';
+      await service.prewarm();
+      await service.prewarm();
+
+      expect(probed, ['https://old.test/startup', 'https://new.test/startup']);
+    },
+  );
+
+  test(
+    'an in-flight probe is not shared with a different backend URL',
+    () async {
+      var backend = 'https://old.test';
+      final pending = Completer<void>();
+      final probed = <String>[];
+      final service = BackendWarmupService(
+        backendUrl: () => backend,
+        probe: (url) {
+          probed.add(url);
+          return url.startsWith('https://old.test')
+              ? pending.future
+              : Future.value();
+        },
+      );
+
+      final slow = service.prewarm();
+      backend = 'https://new.test';
+      await service.prewarm();
+
+      expect(probed, ['https://old.test/startup', 'https://new.test/startup']);
+      pending.complete();
+      await slow;
+    },
+  );
+
+  test('equivalent URL spellings share one warmup', () async {
+    var backend = 'https://example.test/';
+    var calls = 0;
+    final service = BackendWarmupService(
+      backendUrl: () => backend,
+      probe: (_) async => calls++,
+    );
+
+    await service.prewarm();
+    backend = 'https://example.test';
+    await service.prewarm();
+
+    expect(calls, 1);
+  });
+
   for (final (base, expected) in [
     ('https://example.test', 'https://example.test/startup'),
     ('https://example.test/', 'https://example.test/startup'),
