@@ -44,7 +44,18 @@ class ImageUtils {
   /// failure downstream into a misleading size error; callers need to know
   /// decoding itself failed.
   static Uint8List? _compressInternal(Uint8List bytes) {
-    final image = img.decodeImage(bytes);
+    final img.Image? image;
+    try {
+      image = img.decodeImage(bytes);
+    } on FormatException {
+      return null;
+    } on RangeError {
+      // Some decoders index into truncated headers before they can return
+      // null. Treat those bytes as unreadable input, not an app failure.
+      return null;
+    } on StateError {
+      return null;
+    }
 
     if (image == null) {
       return null;

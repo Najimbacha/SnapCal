@@ -208,7 +208,7 @@ void main() {
       onProblem: problems.add,
     );
 
-    expect(problems, [ScanProblem.failed]);
+    expect(problems, [ScanProblem.unreadableImage]);
     expect(await file.exists(), isFalse);
   });
 }
