@@ -45,6 +45,10 @@ Wazn lets users snap a meal or describe it by voice, get an AI nutrition estimat
 - Meal planner with grocery-style planning support
 - Food log with scanned and manually added meals
 - Health Connect activity integration on Android
+- Achievements and streaks
+- Progress reports that can be exported as PDF
+- Android home-screen widget
+- English, Arabic, Spanish, and French
 - RevenueCat-powered Pro subscription flow
 - Firebase-backed auth, sync, notifications, crash reporting, and remote config
 
@@ -84,7 +88,10 @@ Add to food log
 | Voice | `speech_to_text` using Android speech recognition |
 | Charts/UI | `fl_chart`, `flutter_animate`, `lucide_icons`, Material |
 | Backend | Node.js / Express |
-| AI | Backend-proxied AI providers, Gemini-first |
+| Hosting | Google Cloud Run (Render is kept only for older app versions) |
+| AI | Backend-proxied AI providers, DeepSeek by default with Gemini and others as fallbacks |
+| Languages | English, Arabic, Spanish, French |
+| Reports | PDF export with `pdf` + `printing` |
 | Auth & cloud | Firebase Auth, Firestore, Storage |
 | Security | Firebase App Check, server-authoritative entitlements |
 | Monetization | RevenueCat |
@@ -99,6 +106,7 @@ Add to food log
 lib/
   core/          App constants, theme, resilience, networking, utilities
   data/          Models, repositories, services, sync, AI/barcode clients
+  l10n/          Translations (English, Arabic, Spanish, French)
   planner/       Meal-planning and nutrition conversion logic
   providers/     Riverpod app state
   screens/       App screens and feature UI
@@ -106,9 +114,13 @@ lib/
 
 backend/
   server.js      Express API for scans, entitlements, webhooks, admin tools
-  services/      Nutrition DB provider, reminders, backend helpers
+  services/      AI providers, cost controls, nutrition DB, reminders
   cron/          Scheduled jobs
+  deploy/        Cloud Run deploy and budget scripts
+  scripts/       Admin, backup, and data-import tools
+  test/          Backend tests
 
+docs/            Operations runbook and resilience notes
 android/         Android app shell, permissions, Health Connect, widgets
 assets/          Icons, images, avatars, paywall assets
 test/            Flutter unit/widget tests
@@ -168,6 +180,17 @@ npm start
 
 The backend is the safe gateway for AI providers and subscription/webhook operations. Do not put private AI keys directly in the mobile app.
 
+### Deployment
+
+The production backend runs on Google Cloud Run and scales down to zero when
+idle to keep costs low. The app finds the server through the Firebase Remote
+Config key `backend_proxy_url`, so the server can be moved without an app
+update. An older Render server is kept alive only for users on older app
+versions.
+
+- Deploy, validate, and roll back: [`backend/CLOUD_RUN.md`](backend/CLOUD_RUN.md)
+- Day-to-day operations: [`docs/operations_runbook.md`](docs/operations_runbook.md)
+
 ### Important environment variables
 
 | Variable | Required | Purpose |
@@ -177,12 +200,18 @@ The backend is the safe gateway for AI providers and subscription/webhook operat
 | `REVENUECAT_WEBHOOK_AUTH` | Yes | Shared secret for RevenueCat webhooks. |
 | `FIREBASE_SERVICE_ACCOUNT` | One of two | Firebase Admin service-account JSON. |
 | `GOOGLE_APPLICATION_CREDENTIALS` | One of two | Path to Google application credentials. |
-| `GEMINI_API_KEYS` | At least one AI key | Gemini API keys for AI scan/coach features. |
-| `DEEPSEEK_API_KEY` | Optional fallback | AI fallback provider. |
+| `DEEPSEEK_API_KEY` | At least one AI key | Default AI provider for scans and coach. |
+| `GEMINI_API_KEYS` | Optional fallback | Gemini API keys, used if listed in the provider order. |
 | `OPENROUTER_API_KEY` | Optional fallback | AI fallback provider. |
 | `QWEN_API_KEY` | Optional fallback | AI fallback provider. |
 | `GROQ_API_KEY` | Optional fallback | AI fallback provider. |
+| `AI_IMAGE_PROVIDER_ORDER` | Optional | Comma-separated provider order for photo scans. Default is `deepseek`. |
+| `AI_TEXT_PROVIDER_ORDER` | Optional | Comma-separated provider order for text and coach. Default is `deepseek`. |
 | `FREE_MONTHLY_SCANS` | Optional | Free monthly photo-and-voice scan limit. Default is `15`. |
+| `FREE_DAILY_AI_REQUESTS` | Optional | Free daily AI request limit. Default is `30`. |
+| `FREE_DAILY_AI_MESSAGES` | Optional | Free daily coach messages. Default is `1`. |
+| `PRO_DAILY_SCANS` | Optional | Pro daily fair-use scan limit. Default is `100`. |
+| `PRO_DAILY_AI_REQUESTS` | Optional | Pro daily fair-use AI request limit. Default is `200`. |
 | `SCAN_PIPELINE` | Optional | `v1` or `v2` scan pipeline. |
 | `PORT` | Optional | Backend port. |
 | `API_RATE_LIMIT` | Optional | General API rate limiting. |
@@ -292,11 +321,16 @@ Wazn uses RevenueCat for subscriptions and a backend-authoritative entitlement m
 
 Typical Pro value:
 
-- higher or unlimited scan limits
+- far higher scan and AI limits (free users get 15 scans a month)
 - AI coach
 - meal planning
 - macro insights
 - premium tracking features
+
+Pro is not unlimited. A daily fair-use limit protects AI cost, and when a Pro
+user reaches it the server answers with HTTP 429 instead of 402, because the app
+shows the paywall on 402. The backend also caps how much text the AI may write
+per request.
 
 Avoid placing upgrade CTAs everywhere. Monetization should appear at high-intent moments, such as scan limits, locked advanced insights, AI coach entry, and meal planner unlock points.
 
