@@ -1623,6 +1623,8 @@
   "scan_problem_gallery_body": "اسمح لـ Wazn باستخدام صورك من الإعدادات، أو أضف الوجبة يدويًا.",
   "scan_problem_busy_title": "عمليات مسح كثيرة في وقت قصير",
   "scan_problem_busy_body": "انتظر بضع دقائق ثم حاول مرة أخرى. صورتك ووجباتك محفوظة.",
+  "scan_problem_daily_limit_title": "تم بلوغ الحد اليومي",
+  "scan_problem_daily_limit_body": "استخدمت عمليات المسح المتاحة لهذا اليوم. حاول مرة أخرى غدًا. وجباتك محفوظة.",
   "result_from_photo": "من صورتك: {when}",
   "scan_problem_image_title": "لا يمكن استخدام هذه الصورة",
   "scan_problem_image_body": "جرّب صورة أخرى أو أضف الوجبة يدوياً.",

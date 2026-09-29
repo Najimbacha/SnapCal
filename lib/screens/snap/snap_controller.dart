@@ -41,6 +41,10 @@ enum ScanProblem {
   /// Too many scans in a short time (the server's rate limit, HTTP 429) --
   /// not the monthly free limit, which is the paywall.
   busy,
+
+  /// A Pro user reached today's fair-use limit (HTTP 429). It resets
+  /// tomorrow, so the paywall would be wrong and "wait a few minutes" too.
+  dailyLimit,
 }
 
 /// Why the camera preview is not showing.
@@ -205,7 +209,7 @@ class SnapController {
       case AppFailureType.offline:
         return ScanProblem.offline;
       case AppFailureType.quotaExceeded:
-        return ScanProblem.busy;
+        return failure.isDailyLimit ? ScanProblem.dailyLimit : ScanProblem.busy;
       case AppFailureType.timeout:
         return ScanProblem.slow;
       default:

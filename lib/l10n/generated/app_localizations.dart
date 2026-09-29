@@ -8394,6 +8394,18 @@ abstract class AppLocalizations {
   /// **'Wait a few minutes, then try again. Your photo and meals are safe.'**
   String get scan_problem_busy_body;
 
+  /// No description provided for @scan_problem_daily_limit_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily limit reached'**
+  String get scan_problem_daily_limit_title;
+
+  /// No description provided for @scan_problem_daily_limit_body.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve used today\'s scans. Try again tomorrow. Your meals are safe.'**
+  String get scan_problem_daily_limit_body;
+
   /// On the scan result, when an older gallery photo sets the meal time, e.g. From your photo: Yesterday · 8:14 PM
   ///
   /// In en, this message translates to:

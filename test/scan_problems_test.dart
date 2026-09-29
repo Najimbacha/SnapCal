@@ -48,6 +48,20 @@ void main() {
       );
     });
 
+    test('the Pro daily limit says try tomorrow, not wait a few minutes', () {
+      expect(
+        SnapController.problemFor(
+          const AppFailure(
+            type: AppFailureType.quotaExceeded,
+            message: 'daily',
+            code: AppFailure.dailyLimitCode,
+            statusCode: 429,
+          ),
+        ),
+        ScanProblem.dailyLimit,
+      );
+    });
+
     test('anything else is a failed scan', () {
       for (final type in [
         AppFailureType.server,

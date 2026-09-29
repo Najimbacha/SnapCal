@@ -2243,6 +2243,8 @@
   "scan_problem_gallery_body": "Allow Wazn to use your photos in Settings, or add the meal manually.",
   "scan_problem_busy_title": "Too many scans at once",
   "scan_problem_busy_body": "Wait a few minutes, then try again. Your photo and meals are safe.",
+  "scan_problem_daily_limit_title": "Daily limit reached",
+  "scan_problem_daily_limit_body": "You've used today's scans. Try again tomorrow. Your meals are safe.",
   "result_from_photo": "From your photo: {when}",
   "@result_from_photo": {
     "description": "On the scan result, when an older gallery photo sets the meal time, e.g. From your photo: Yesterday · 8:14 PM",

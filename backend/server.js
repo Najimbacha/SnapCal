@@ -1056,7 +1056,7 @@ async function claimScanQuota(uid, scanId, options = {}) {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      return scan;
+      return { scan, claim: { isPremium, monthKey, dayKey: currentDayKey() } };
     });
   } catch (error) {
     const recovered = await retryQuotaAfterForcedEntitlement(
@@ -2292,8 +2292,9 @@ app.post('/api/food-scans/:scanId/process', authenticateToken, verifyAppCheck, s
   if (!isSafeId(scanId)) return safeError(res, 404, 'Scan not found.');
 
   let scan;
+  let claim;
   try {
-    scan = await claimScanQuota(uid, scanId);
+    ({ scan, claim } = await claimScanQuota(uid, scanId));
   } catch (error) {
     if (error.code === 402) {
       metrics.quotaDenials.inc({ kind: 'scan' });
@@ -2345,6 +2346,7 @@ app.post('/api/food-scans/:scanId/process', authenticateToken, verifyAppCheck, s
     return res.status(200).json({ scanId, status: 'completed', ...nutrition });
   } catch (error) {
     console.error('Process scan failed:', error.message);
+    await refundScanQuota(uid, claim.monthKey, claim);
     await scanDoc(uid, scanId).set({
       status: 'failed',
       processingError: 'Scan processing failed.',

@@ -4646,6 +4646,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Wait a few minutes, then try again. Your photo and meals are safe.';
 
   @override
+  String get scan_problem_daily_limit_title => 'Daily limit reached';
+
+  @override
+  String get scan_problem_daily_limit_body =>
+      'You\'ve used today\'s scans. Try again tomorrow. Your meals are safe.';
+
+  @override
   String result_from_photo(String when) {
     return 'From your photo: $when';
   }

@@ -42,12 +42,19 @@ class AppFailure implements Exception {
     this.rawError,
   });
 
+  static const String dailyLimitCode = 'daily_limit';
+
+  /// A Pro user's daily fair-use ceiling (HTTP 429): retrying today cannot
+  /// succeed, unlike the short-term rate limit that shares the status code.
+  bool get isDailyLimit => code == dailyLimitCode;
+
   bool get isRetryable {
     // 402 (payment required / free-tier exhausted) is a terminal state for
     // the request: retrying cannot succeed and the user must upgrade.
     if (type == AppFailureType.quotaExceeded && statusCode == 402) {
       return false;
     }
+    if (isDailyLimit) return false;
     switch (type) {
       case AppFailureType.offline:
       case AppFailureType.timeout:
@@ -215,6 +222,15 @@ class AppFailure implements Exception {
     }
 
     if (status == 429) {
+      if (_isDailyLimitBody(error.response?.data)) {
+        return AppFailure(
+          type: AppFailureType.quotaExceeded,
+          message: 'Daily limit reached. Please try again tomorrow.',
+          code: dailyLimitCode,
+          statusCode: status,
+          rawError: error,
+        );
+      }
       return AppFailure(
         type: AppFailureType.quotaExceeded,
         message: 'Service quota was reached. Please try again shortly.',
@@ -367,6 +383,11 @@ class AppFailure implements Exception {
       code: error.code,
       rawError: error,
     );
+  }
+
+  static bool _isDailyLimitBody(Object? data) {
+    final message = data is Map ? data['error'] : data;
+    return message is String && message.contains('fair-use');
   }
 
   static Duration? _retryAfter(String? value) {

@@ -4635,6 +4635,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'انتظر بضع دقائق ثم حاول مرة أخرى. صورتك ووجباتك محفوظة.';
 
   @override
+  String get scan_problem_daily_limit_title => 'تم بلوغ الحد اليومي';
+
+  @override
+  String get scan_problem_daily_limit_body =>
+      'استخدمت عمليات المسح المتاحة لهذا اليوم. حاول مرة أخرى غدًا. وجباتك محفوظة.';
+
+  @override
   String result_from_photo(String when) {
     return 'من صورتك: $when';
   }

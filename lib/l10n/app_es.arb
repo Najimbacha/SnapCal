@@ -1620,6 +1620,8 @@
   "scan_problem_gallery_body": "Permite que Wazn use tus fotos en Ajustes, o añade la comida manualmente.",
   "scan_problem_busy_title": "Demasiados escaneos seguidos",
   "scan_problem_busy_body": "Espera unos minutos e inténtalo de nuevo. Tu foto y tus comidas están a salvo.",
+  "scan_problem_daily_limit_title": "Límite diario alcanzado",
+  "scan_problem_daily_limit_body": "Has usado los escaneos de hoy. Inténtalo de nuevo mañana. Tus comidas están a salvo.",
   "result_from_photo": "Según tu foto: {when}",
   "scan_problem_image_title": "No se puede usar esta foto",
   "scan_problem_image_body": "Prueba con otra foto o añade la comida manualmente.",

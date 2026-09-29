@@ -15,6 +15,42 @@ void main() {
       expect(failure.isRetryable, isTrue);
     });
 
+    test('a Pro daily fair-use 429 is a daily limit that is not retried', () {
+      final failure = AppFailure.fromError(
+        DioException(
+          requestOptions: RequestOptions(path: '/api/ai/text'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/api/ai/text'),
+            statusCode: 429,
+            data: {
+              'error': 'Daily fair-use limit reached. Please try again tomorrow.',
+            },
+          ),
+        ),
+      );
+
+      expect(failure.type, AppFailureType.quotaExceeded);
+      expect(failure.statusCode, 429);
+      expect(failure.isDailyLimit, isTrue);
+      expect(failure.isRetryable, isFalse);
+    });
+
+    test('an ordinary rate-limit 429 is still a short wait that is retried', () {
+      final failure = AppFailure.fromError(
+        DioException(
+          requestOptions: RequestOptions(path: '/v1/scan'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/v1/scan'),
+            statusCode: 429,
+            data: {'error': 'Too many requests.'},
+          ),
+        ),
+      );
+
+      expect(failure.isDailyLimit, isFalse);
+      expect(failure.isRetryable, isTrue);
+    });
+
     test('maps Dio 403 to permission denied', () {
       final failure = AppFailure.fromError(
         DioException(

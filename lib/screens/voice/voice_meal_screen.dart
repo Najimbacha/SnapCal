@@ -121,6 +121,7 @@ enum _Problem {
   noFood,
   offline,
   busy,
+  dailyLimit,
   failed,
 }
 
@@ -447,7 +448,8 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
       // "Wazn couldn't analyze that meal", which sounds like the words.
       _toIdle(switch (failure.type) {
         AppFailureType.offline || AppFailureType.timeout => _Problem.offline,
-        AppFailureType.quotaExceeded => _Problem.busy,
+        AppFailureType.quotaExceeded =>
+          failure.isDailyLimit ? _Problem.dailyLimit : _Problem.busy,
         _ => _Problem.failed,
       });
       return;
@@ -924,6 +926,7 @@ class _VoiceMealScreenState extends ConsumerState<VoiceMealScreen>
         _Problem.noFood => l10n.voice_no_food,
         _Problem.offline => l10n.scan_problem_slow_body,
         _Problem.busy => l10n.scan_problem_busy_body,
+        _Problem.dailyLimit => l10n.scan_problem_daily_limit_body,
         _Problem.failed => l10n.voice_analysis_failed,
       };
 }

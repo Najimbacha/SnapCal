@@ -411,6 +411,11 @@ class _SnapScreenState extends ConsumerState<SnapScreen>
         l10n.scan_problem_busy_title,
         l10n.scan_problem_busy_body,
       ),
+      ScanProblem.dailyLimit => (
+        WaznIcons.hourglass,
+        l10n.scan_problem_daily_limit_title,
+        l10n.scan_problem_daily_limit_body,
+      ),
     };
 
     final String primaryLabel;
