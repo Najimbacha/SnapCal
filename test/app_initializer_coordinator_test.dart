@@ -42,4 +42,25 @@ void main() {
     await coordinator.run(() async => calls++);
     expect(calls, 2);
   });
+
+  test('retry after a UI timeout joins the whole startup attempt', () async {
+    final attempts = AppStartupAttempts(
+      timeout: const Duration(milliseconds: 10),
+    );
+    final pending = Completer<void>();
+    var calls = 0;
+
+    Future<void> start() {
+      calls++;
+      return pending.future;
+    }
+
+    await expectLater(attempts.run(start), throwsA(isA<TimeoutException>()));
+    final retry = attempts.run(start);
+    expect(calls, 1);
+
+    pending.complete();
+    await retry;
+    expect(calls, 1);
+  });
 }

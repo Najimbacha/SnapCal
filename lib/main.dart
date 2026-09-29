@@ -42,6 +42,7 @@ class AppInitializerGate extends ConsumerStatefulWidget {
 
 class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
   late Future<void> _initFuture;
+  final AppStartupAttempts _startupAttempts = AppStartupAttempts();
 
   @override
   void initState() {
@@ -50,15 +51,8 @@ class _AppInitializerGateState extends ConsumerState<AppInitializerGate> {
   }
 
   void _runInit() {
-    _initFuture = _start()
-        .timeout(
-          const Duration(seconds: 35),
-          onTimeout:
-              () =>
-                  throw TimeoutException(
-                    'Initialization timed out. Please check your internet connection or restart the app.',
-                  ),
-        )
+    _initFuture = _startupAttempts
+        .run(_start)
         .then((_) {
           debugPrint('✅ SnapCalApp: Initialization Complete');
         })

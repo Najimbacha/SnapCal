@@ -55,6 +55,30 @@ class AppInitializationCoordinator {
   }
 }
 
+/// Shares the complete UI startup attempt, including settings hydration.
+///
+/// Timing out only stops the gate from waiting; it cannot cancel platform
+/// initialization. A Retry pressed meanwhile must join that work instead of
+/// invalidating and loading settings a second time beside it.
+class AppStartupAttempts {
+  AppStartupAttempts({this.timeout = const Duration(seconds: 35)});
+
+  final Duration timeout;
+  final AppInitializationCoordinator _coordinator =
+      AppInitializationCoordinator();
+
+  Future<void> run(Future<void> Function() start) => _coordinator
+      .run(start)
+      .timeout(
+        timeout,
+        onTimeout:
+            () =>
+                throw TimeoutException(
+                  'Initialization timed out. Please check your internet connection or restart the app.',
+                ),
+      );
+}
+
 class AppInitializer {
   static final AppInitializationCoordinator _coordinator =
       AppInitializationCoordinator();
