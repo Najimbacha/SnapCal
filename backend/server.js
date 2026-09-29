@@ -107,6 +107,8 @@ const SCAN_PIPELINE = (process.env.SCAN_PIPELINE || 'v1').toLowerCase();
 const nutritionProvider = require('./services/nutrition_provider');
 const unmatchedFoodLogger = require('./services/unmatched_food_logger');
 const { healthScoreFor } = require('./services/health_score');
+const { lookupBarcode: lookupUsdaBarcode } = require('./services/usda_barcode');
+const USDA_API_KEY = process.env.USDA_API_KEY || '';
 
 // Express 4 does not pass a rejected promise from an async handler to the
 // error middleware. The rejection goes unhandled and, on Node 15+, takes the
@@ -2526,6 +2528,25 @@ app.post('/api/ai/text', authenticateToken, verifyAppCheck, apiLimiter, async (r
   }
 });
 
+// A second, free source for barcodes the app's first database does not know.
+// It costs the user no scan; the key stays here because the repo is public.
+app.get('/api/barcode/:code', authenticateToken, verifyAppCheck, apiLimiter, async (req, res) => {
+  const code = req.params.code;
+  if (typeof code !== 'string' || !/^\d{6,14}$/.test(code)) {
+    return safeError(res, 400, 'Invalid barcode.');
+  }
+  if (!USDA_API_KEY) return safeError(res, 503, 'Barcode lookup is not configured.');
+
+  try {
+    const product = await lookupUsdaBarcode(code, { apiKey: USDA_API_KEY });
+    if (!product) return safeError(res, 404, 'Product not found.');
+    return res.status(200).json({ product });
+  } catch (error) {
+    console.error('USDA barcode lookup failed:', error.message);
+    return safeError(res, 502, 'Barcode lookup failed.');
+  }
+});
+
 app.post('/api/ai/image', authenticateToken, verifyAppCheck, scanLimiter, async (req, res) => {
   const body = req.body || {};
   if (!assertPlainObject(body)
@@ -3051,6 +3072,7 @@ if (process.env.NODE_ENV !== 'production') {
     { method: 'DELETE', path: '/api/food-scans/:scanId' },
     { method: 'GET', path: '/api/premium-status' },
     { method: 'POST', path: '/api/ai/text' },
+    { method: 'GET', path: '/api/barcode/:code' },
     { method: 'POST', path: '/api/ai/image' },
     { method: 'POST', path: '/api/revenuecat/webhook' },
     { method: 'GET', path: '/api/admin/users/:uid/summary' },

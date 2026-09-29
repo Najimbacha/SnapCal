@@ -641,7 +641,7 @@ class SnapController {
     final lookup = await SafeAsync.run<NutritionResult?>(
       label: 'Barcode lookup',
       operation: () => _barcodeService.fetchProductByBarcode(code),
-      timeout: TimeoutPolicy.barcode,
+      timeout: TimeoutPolicy.barcodeLookup,
       retryPolicy: RetryPolicy.network,
       operationKey: 'snap:barcode:$code',
       isActive: () => _isCurrent(op),

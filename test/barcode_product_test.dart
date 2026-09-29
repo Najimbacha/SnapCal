@@ -32,6 +32,24 @@ void main() {
     expect(BarcodeService.lookupCodes('https://example.com'), isEmpty);
   });
 
+  test('a USDA product from our server reads like any other product', () {
+    final r =
+        BarcodeService.fromUsda({
+          'name': 'Oat Bar',
+          'brand': 'Acme Foods',
+          'servingSize': 40,
+          'servingText': '1 bar',
+          'per100g': {'calories': 400, 'protein': 10, 'carbs': 60, 'fat': 12},
+        }, l10n)!;
+    expect(r.foodName, 'Oat Bar (Acme Foods)');
+    expect(r.weightG, 40);
+    expect(r.calories, 160);
+    expect(r.protein, 4);
+    expect(r.portion, '1 bar');
+    expect(r.matched, isTrue);
+    expect(BarcodeService.fromUsda({'name': 'x'}, l10n), isNull);
+  });
+
   test('a serving is its real weight, not the first number on the label', () {
     final r =
         BarcodeService.fromProduct({

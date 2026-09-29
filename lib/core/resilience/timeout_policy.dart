@@ -7,6 +7,8 @@ class TimeoutPolicy {
   static const aiScan = Duration(seconds: 60);
   static const assistant = Duration(seconds: 18);
   static const barcode = Duration(seconds: 8);
+  static const barcodeFallback = Duration(seconds: 12);
+  static const barcodeLookup = Duration(seconds: 30);
   static const mealPlanner = Duration(seconds: 60);
   static const mealPlannerAction = Duration(seconds: 30);
   static const firestore = Duration(seconds: 8);

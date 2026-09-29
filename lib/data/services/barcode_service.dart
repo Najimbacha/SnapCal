@@ -4,7 +4,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:snapcal/l10n/generated/app_localizations.dart';
 
+import '../../core/network/api_client.dart';
 import '../../core/resilience/app_failure.dart';
+import '../../core/services/config_service.dart';
 import '../../core/resilience/timeout_policy.dart';
 import 'gemini_service.dart'; // For NutritionResult
 
@@ -14,6 +16,8 @@ class BarcodeService {
   factory BarcodeService() => _instance;
   BarcodeService._internal() : _dio = Dio();
 
+  /// A plain client for the public database. It must never carry our sign-in,
+  /// so our own server is called through ApiClient instead.
   final Dio _dio;
 
   /// OpenFoodFacts asks apps to name themselves; anonymous callers can be
@@ -24,11 +28,65 @@ class BarcodeService {
   /// Fetches product data from OpenFoodFacts
   Future<NutritionResult?> fetchProductByBarcode(String barcode) async {
     debugPrint("Looking up barcode: $barcode");
-    for (final code in lookupCodes(barcode)) {
+    final codes = lookupCodes(barcode);
+    for (final code in codes) {
       final result = await _fetchOne(code);
       if (result != null) return result;
     }
-    return null;
+    if (codes.isEmpty) return null;
+    return _fetchFromUsda(codes);
+  }
+
+  /// A second, free database (USDA branded foods) for what the first does not
+  /// know. It runs on our server, which holds the key. It is a bonus: any
+  /// failure here just means "not found".
+  Future<NutritionResult?> _fetchFromUsda(List<String> codes) async {
+    final code = codes.firstWhere(
+      (c) => c.length == 12 || c.length == 13,
+      orElse: () => codes.first,
+    );
+    try {
+      final response = await ApiClient.dio.get(
+        '${ConfigService().backendProxyUrl}/api/barcode/$code',
+        options: Options(
+          receiveTimeout: TimeoutPolicy.barcodeFallback,
+          sendTimeout: TimeoutPolicy.barcodeFallback,
+        ),
+      );
+      final data = response.data;
+      final product = data is Map ? data['product'] : null;
+      if (product is! Map) return null;
+      return fromUsda(product, _l10n);
+    } catch (e) {
+      debugPrint('USDA barcode lookup unavailable: $e');
+      return null;
+    }
+  }
+
+  /// A product from our server's USDA lookup, shaped like an OpenFoodFacts
+  /// one so it is read by the same, tested code.
+  @visibleForTesting
+  static NutritionResult? fromUsda(Map product, AppLocalizations l10n) {
+    final per100 = product['per100g'];
+    if (per100 is! Map) return null;
+    final name = product['name']?.toString().trim() ?? '';
+    final brand = product['brand']?.toString().trim() ?? '';
+    return fromProduct({
+      'product_name':
+          name.isEmpty
+              ? ''
+              : (brand.isEmpty || name.toLowerCase().contains(brand.toLowerCase())
+                  ? name
+                  : '$name ($brand)'),
+      'serving_size': product['servingText'],
+      'serving_quantity': product['servingSize'],
+      'nutriments': {
+        'energy-kcal_100g': per100['calories'],
+        'proteins_100g': per100['protein'],
+        'carbohydrates_100g': per100['carbs'],
+        'fat_100g': per100['fat'],
+      },
+    }, l10n);
   }
 
   Future<NutritionResult?> _fetchOne(String code) async {

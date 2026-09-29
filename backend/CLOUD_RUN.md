@@ -121,6 +121,11 @@ In Secret Manager, create these secrets with values copied directly from Render:
 | `snapcal-redis-url` | `REDIS_URL` |
 | `snapcal-scheduler` | `SCHEDULER_SECRET` |
 | `snapcal-metrics` | `METRICS_TOKEN` |
+| `snapcal-usda` (optional) | `USDA_API_KEY` |
+
+`USDA_API_KEY` is a free key from fdc.nal.usda.gov. Without it, the second
+barcode database is switched off (`/api/barcode/:code` answers 503) and the app
+still works with its first database.
 
 Preserve the entire webhook Authorization value, including any `Bearer ` prefix.
 Grant `roles/secretmanager.secretAccessor` to the runtime account **on each secret**,

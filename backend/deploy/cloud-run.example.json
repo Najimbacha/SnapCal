@@ -42,6 +42,7 @@
     "REVENUECAT_SECRET_API_KEY": "snapcal-revenuecat-api:1",
     "REDIS_URL": "snapcal-redis-url:2",
     "SCHEDULER_SECRET": "snapcal-scheduler:1",
-    "METRICS_TOKEN": "snapcal-metrics:1"
+    "METRICS_TOKEN": "snapcal-metrics:1",
+    "USDA_API_KEY": "snapcal-usda:1"
   }
 }
