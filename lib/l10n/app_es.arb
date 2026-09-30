@@ -1895,5 +1895,6 @@
   "auth_hide_password": "Ocultar contraseña",
   "onb_welcome_card_food": "Bol de arroz con pollo",
   "onb_welcome_card_scanned": "Escaneado",
-  "paywall_plan_per_month_equiv": "≈ {price} / mes"
+  "paywall_included": "Incluido",
+  "paywall_not_included": "No incluido"
 }

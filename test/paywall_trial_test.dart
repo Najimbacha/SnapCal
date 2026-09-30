@@ -129,9 +129,15 @@ void main() {
   testWidgets('Free and Pro are shown side by side', (tester) async {
     await _open(tester, _annual());
     // Both columns are in view at once; nothing to flip.
-    expect(find.text('Full week'), findsOneWidget);
-    expect(find.text('1 day'), findsOneWidget);
-    expect(find.text('1 question a day'), findsOneWidget);
+    // Yes/no rows: a check under Pro, a cross under Free, no limits spelled out.
+    for (final row in [1, 2, 3, 4]) {
+      expect(find.byKey(ValueKey('paywall-pro-$row')), findsOneWidget);
+      expect(find.byKey(ValueKey('paywall-free-$row')), findsOneWidget);
+    }
+    expect(find.text('1 day'), findsNothing);
+    expect(find.text('1 question a day'), findsNothing);
+    // The scans row is the one that turns on a number, so it keeps its words.
+    expect(find.text('Unlimited'), findsOneWidget);
 
     await tester.tap(find.text('See everything in Pro'));
     for (var i = 0; i < 10; i++) {

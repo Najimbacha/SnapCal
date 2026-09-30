@@ -135,8 +135,11 @@ void main() {
         // One table shows Free and Pro side by side, with nothing to tap.
         expect(find.byKey(const ValueKey('paywall-compare')), findsOneWidget);
         expect(find.text('Wazn Pro'), findsOneWidget);
-        expect(find.text('Full week'), findsOneWidget);
-        expect(find.text('1 day'), findsOneWidget);
+        // Yes/no rows carry a check under Pro and a cross under Free; the scans
+        // row keeps its numbers.
+        expect(find.byKey(const ValueKey('paywall-pro-1')), findsOneWidget);
+        expect(find.byKey(const ValueKey('paywall-free-1')), findsOneWidget);
+        expect(find.text('Unlimited'), findsOneWidget);
 
         // Both plans are in view beside the button, with no scrolling.
         await tester.ensureVisible(find.text('Monthly'));

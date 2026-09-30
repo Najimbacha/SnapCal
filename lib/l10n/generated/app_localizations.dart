@@ -9984,11 +9984,17 @@ abstract class AppLocalizations {
   /// **'Scanned'**
   String get onb_welcome_card_scanned;
 
-  /// No description provided for @paywall_plan_per_month_equiv.
+  /// No description provided for @paywall_included.
   ///
   /// In en, this message translates to:
-  /// **'≈ {price} / month'**
-  String paywall_plan_per_month_equiv(String price);
+  /// **'Included'**
+  String get paywall_included;
+
+  /// No description provided for @paywall_not_included.
+  ///
+  /// In en, this message translates to:
+  /// **'Not included'**
+  String get paywall_not_included;
 }
 
 class _AppLocalizationsDelegate

@@ -1898,5 +1898,6 @@
   "auth_hide_password": "إخفاء كلمة المرور",
   "onb_welcome_card_food": "طبق أرز بالدجاج",
   "onb_welcome_card_scanned": "تم المسح",
-  "paywall_plan_per_month_equiv": "≈ {price} / شهر"
+  "paywall_included": "مشمول",
+  "paywall_not_included": "غير مشمول"
 }

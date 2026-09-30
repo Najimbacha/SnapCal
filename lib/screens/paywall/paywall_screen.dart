@@ -976,24 +976,28 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         label: l10n.paywall_row_meal_plans,
         free: l10n.paywall_free_meal_plan,
         pro: l10n.paywall_pro_meal_plan,
+        marks: true,
       ),
       _CompareRowData(
         icon: WaznIcons.coach,
         label: l10n.paywall_row_coach,
         free: l10n.paywall_free_coach,
         pro: l10n.paywall_pro_coach,
+        marks: true,
       ),
       _CompareRowData(
         icon: WaznIcons.image,
         label: l10n.paywall_row_photos,
         free: l10n.paywall_free_photos('${BodyMetrics.freePhotoCheckIns}'),
         pro: l10n.paywall_feature_unlimited,
+        marks: true,
       ),
       _CompareRowData(
         icon: WaznIcons.history,
         label: l10n.paywall_row_history,
         free: l10n.paywall_free_history('${ProFeatureService.freeHistoryDays}'),
         pro: l10n.paywall_pro_history,
+        marks: true,
       ),
     ];
   }
@@ -1098,7 +1102,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             price: _introFor(p)?.priceString ?? _safePriceString(p),
             note: _planNote(p, l10n),
             noteIsOffer: _trialFor(p) != null,
-            extra: identical(p, annual) ? _perMonth(p, l10n) : null,
             badge:
                 annual != null && identical(p, annual) && savings != null
                     ? l10n.paywall_save_percent(savings)
@@ -1116,29 +1119,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     if (_introFor(package) != null) {
       return l10n.paywall_plan_then(_safePriceString(package));
     }
-    return switch (package.packageType) {
-      PackageType.annual => l10n.paywall_plan_per_year,
-      PackageType.monthly => l10n.paywall_plan_per_month,
-      _ => '',
-    };
-  }
-
-  /// The yearly price over twelve months, written the way the store writes
-  /// prices (same currency symbol, same side), so it reads as the same money.
-  /// Null when there is a first-period discount: the tile then shows that.
-  String? _perMonth(Package package, AppLocalizations l10n) {
-    try {
-      if (_introFor(package) != null) return null;
-      final product = package.storeProduct;
-      final text = product.priceString;
-      final number = RegExp(r'd[d.,  ]*d|d').firstMatch(text);
-      if (number == null || product.price <= 0) return null;
-      final monthly = (product.price / 12).toStringAsFixed(2);
-      final line = text.replaceRange(number.start, number.end, monthly);
-      return l10n.paywall_plan_per_month_equiv(line);
-    } catch (_) {
-      return null;
-    }
+    return '';
   }
 
   String _safePriceString(Package package) {
@@ -1164,6 +1145,7 @@ class _CompareRowData {
     required this.free,
     required this.pro,
     this.warning = false,
+    this.marks = false,
   });
 
   final IconData icon;
@@ -1173,6 +1155,10 @@ class _CompareRowData {
 
   /// The Free value is a limit already reached: shown in amber.
   final bool warning;
+
+  /// A plain yes/no row: a cross under Free and a check under Pro, with no
+  /// limits spelled out. Rows that turn on a number keep their words.
+  final bool marks;
 }
 
 /// Free and Pro side by side, both always in view: what a feature is, what
@@ -1183,8 +1169,8 @@ class _CompareCard extends StatelessWidget {
 
   final List<_CompareRowData> rows;
 
-  static const _labelFlex = 5;
-  static const _valueFlex = 3;
+  static const _labelFlex = 8;
+  static const _valueFlex = 6;
 
   @override
   Widget build(BuildContext context) {
@@ -1209,6 +1195,7 @@ class _CompareCard extends StatelessWidget {
                   flex: _valueFlex,
                   child: Text(
                     l10n.paywall_compare_free,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: _pw.muted,
                       fontSize: 12,
@@ -1221,6 +1208,7 @@ class _CompareCard extends StatelessWidget {
                   flex: _valueFlex,
                   child: Text(
                     l10n.paywall_compare_pro,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: _pw.em,
                       fontSize: 12,
@@ -1239,6 +1227,28 @@ class _CompareCard extends StatelessWidget {
   }
 }
 
+/// A check (included) or a cross (not included). A shape as well as a
+/// colour, and named for screen readers.
+class _Mark extends StatelessWidget {
+  const _Mark({super.key, required this.included});
+
+  final bool included;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: Icon(
+        included ? WaznIcons.success : WaznIcons.close,
+        size: 22,
+        color: included ? _pw.em : _pw.faint,
+        semanticLabel:
+            included ? l10n.paywall_included : l10n.paywall_not_included,
+      ),
+    );
+  }
+}
+
 class _CompareRow extends StatelessWidget {
   const _CompareRow({required this.data, required this.index});
 
@@ -1248,8 +1258,8 @@ class _CompareRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 48),
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      constraints: const BoxConstraints(minHeight: 44),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: _pw.line)),
       ),
@@ -1257,54 +1267,58 @@ class _CompareRow extends StatelessWidget {
         children: [
           Expanded(
             flex: _CompareCard._labelFlex,
-            child: Row(
-              children: [
-                Icon(data.icon, size: 18, color: _pw.muted),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    data.label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _pw.ink,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+            child: Text(
+              data.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _pw.ink,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: _CompareCard._valueFlex,
+            child:
+                data.marks
+                    ? _Mark(
+                      key: ValueKey('paywall-free-$index'),
+                      included: false,
+                    )
+                    : Text(
+                      data.free,
+                      key: ValueKey('paywall-free-$index'),
+                      textAlign: TextAlign.center,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: data.warning ? _pw.amber : _pw.muted,
+                        fontSize: 14,
+                        fontWeight:
+                            data.warning ? FontWeight.w700 : FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ),
-              ],
-            ),
           ),
           const SizedBox(width: 8),
           Expanded(
             flex: _CompareCard._valueFlex,
-            child: Text(
-              data.free,
-              key: ValueKey('paywall-free-$index'),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: data.warning ? _pw.amber : _pw.muted,
-                fontSize: 14,
-                fontWeight: data.warning ? FontWeight.w700 : FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: _CompareCard._valueFlex,
-            child: Text(
-              data.pro,
-              key: ValueKey('paywall-pro-$index'),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _pw.em,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child:
+                data.marks
+                    ? _Mark(key: ValueKey('paywall-pro-$index'), included: true)
+                    : Text(
+                      data.pro,
+                      key: ValueKey('paywall-pro-$index'),
+                      textAlign: TextAlign.center,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _pw.em,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
           ),
         ],
       ),
@@ -1440,7 +1454,6 @@ class _PlanData {
     required this.note,
     this.noteIsOffer = false,
     this.badge,
-    this.extra,
   });
 
   final String label;
@@ -1450,9 +1463,6 @@ class _PlanData {
   /// The note names a free trial: shown in green.
   final bool noteIsOffer;
   final String? badge;
-
-  /// A quieter last line, such as the yearly price spread over a month.
-  final String? extra;
 }
 
 /// One row per plan, full width, the way most subscription screens list them:
@@ -1499,10 +1509,9 @@ class _PlanRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Under the price: the yearly price over a month, or the period.
-    final under =
-        data.extra ??
-        (data.noteIsOffer || data.note.isEmpty ? null : data.note);
+    // Under the price only the price that follows a first-year discount.
+    final under = data.noteIsOffer || data.note.isEmpty ? null : data.note;
+    final badge = data.badge;
     return Semantics(
       button: true,
       selected: selected,
@@ -1511,115 +1520,127 @@ class _PlanRow extends StatelessWidget {
         key: ValueKey('paywall-plan-${data.label}'),
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 64),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color:
-                selected
-                    ? Color.alphaBlend(
-                      _pw.em.withValues(alpha: _pw.isDark ? 0.10 : 0.07),
-                      _pw.card,
-                    )
-                    : _pw.card,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: selected ? _pw.em : _pw.line,
-              width: selected ? 2 : 1,
-            ),
-          ),
-          child: Row(
+        child: Padding(
+          // Room above for a saving that hangs on the top edge.
+          padding: EdgeInsets.only(top: badge != null ? 10 : 0),
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              _RadioMark(selected: selected),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+              Container(
+                constraints: const BoxConstraints(minHeight: 64),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      selected
+                          ? Color.alphaBlend(
+                            _pw.em.withValues(alpha: _pw.isDark ? 0.10 : 0.07),
+                            _pw.card,
+                          )
+                          : _pw.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: selected ? _pw.em : _pw.line,
+                    width: selected ? 2 : 1,
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          data.label,
-                          style: TextStyle(
-                            color: _pw.ink,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                    _RadioMark(selected: selected),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            data.label,
+                            style: TextStyle(
+                              color: _pw.ink,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                        if (data.badge != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _pw.em,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              data.badge!,
+                          if (data.noteIsOffer && data.note.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              data.note,
                               style: TextStyle(
-                                color: _pw.onEm,
-                                fontSize: 12,
+                                color: _pw.em,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // As wide as its content, and the price scales down rather
+                    // than overflow: a long currency or a large text size must
+                    // not push the row wide.
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 160),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: Text(
+                              data.price,
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: _pw.ink,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                    if (data.noteIsOffer && data.note.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        data.note,
-                        style: TextStyle(
-                          color: _pw.em,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
+                          if (under != null)
+                            Text(
+                              under,
+                              textAlign: TextAlign.end,
+                              style: TextStyle(
+                                color: _pw.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                        ],
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              // Flexible, and the price scales down rather than overflow: a long
-              // currency or a large text size must not push the row wide.
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: Text(
-                        data.price,
-                        maxLines: 1,
-                        style: TextStyle(
-                          color: _pw.ink,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.2,
-                        ),
+              // The saving hangs on the card's top-right edge.
+              if (badge != null)
+                PositionedDirectional(
+                  top: -10,
+                  end: 16,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _pw.em,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      badge,
+                      style: TextStyle(
+                        color: _pw.onEm,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    if (under != null)
-                      Text(
-                        under,
-                        textAlign: TextAlign.end,
-                        style: TextStyle(
-                          color: _pw.muted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),

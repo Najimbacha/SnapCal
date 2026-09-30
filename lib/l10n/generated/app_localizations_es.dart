@@ -5663,7 +5663,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get onb_welcome_card_scanned => 'Escaneado';
 
   @override
-  String paywall_plan_per_month_equiv(String price) {
-    return '≈ $price / mes';
-  }
+  String get paywall_included => 'Incluido';
+
+  @override
+  String get paywall_not_included => 'No incluido';
 }

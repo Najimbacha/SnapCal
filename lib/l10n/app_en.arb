@@ -2807,8 +2807,6 @@
   "auth_hide_password": "Hide password",
   "onb_welcome_card_food": "Chicken rice bowl",
   "onb_welcome_card_scanned": "Scanned",
-  "paywall_plan_per_month_equiv": "≈ {price} / month",
-  "@paywall_plan_per_month_equiv": {
-    "placeholders": { "price": { "type": "String" } }
-  }
+  "paywall_included": "Included",
+  "paywall_not_included": "Not included"
 }
