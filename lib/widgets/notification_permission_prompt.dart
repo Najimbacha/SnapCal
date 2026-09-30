@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
-import 'wazn_icons.dart';
 import '../l10n/generated/app_localizations.dart';
+import '../screens/onboarding/onboarding_draft.dart';
+import '../screens/onboarding/onboarding_kit.dart';
+import '../screens/onboarding/widgets/onb_art.dart';
 
 /// Asks for notification permission once, with a reason, after onboarding.
 ///
@@ -79,25 +80,22 @@ class _PromptSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 24),
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                WaznIcons.notifications,
-                color: AppColors.primary,
-                size: 30,
-              ),
+            const SizedBox(height: 20),
+            const OnbGoalArt(
+              goal: GoalType.trackNutrition,
+              selected: false,
+              height: 128,
+              alignment: Alignment.center,
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             Text(
               l10n.notif_prompt_title,
               textAlign: TextAlign.center,
-              style: AppTypography.heading3.copyWith(color: scheme.onSurface),
+              style: AppTypography.heading3.copyWith(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -109,12 +107,10 @@ class _PromptSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(l10n.notif_prompt_allow),
-              ),
+            OnbCta(
+              key: const ValueKey('notification-prompt-allow'),
+              label: l10n.notif_prompt_allow,
+              onTap: () => Navigator.pop(context, true),
             ),
             const SizedBox(height: 4),
             TextButton(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'wazn_icons.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/theme/theme_colors.dart';
 import '../l10n/generated/app_localizations.dart';
 
 /// The free-user upgrade affordance for the home top bar: a compact premium
@@ -15,8 +15,9 @@ class HomeUpgradeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // The same solid green as every other button in the app, not the
+    // green-to-gold gradient the paywall uses.
     return Semantics(
       button: true,
       label: l10n.home_upgrade_chip,
@@ -27,29 +28,20 @@ class HomeUpgradeChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           child: Ink(
             decoration: BoxDecoration(
-              gradient: AppColors.premiumGradient,
+              color: context.primaryColor,
               borderRadius: BorderRadius.circular(999),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.premiumGold.withValues(
-                    alpha: isDark ? 0.38 : 0.28,
-                  ),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(11, 7, 13, 7),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(WaznIcons.pro, color: Colors.white, size: 13),
+                  Icon(WaznIcons.pro, color: context.onPrimaryColor, size: 13),
                   const SizedBox(width: 5),
                   Text(
                     l10n.home_upgrade_chip,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.onPrimaryColor,
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.1,

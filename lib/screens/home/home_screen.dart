@@ -120,9 +120,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
     if (!mounted) return;
 
-    // Reminders need permission, asked here once with a reason rather than
-    // cold at first launch. One prompt per visit, so it goes before upsells.
-    if (await NotificationPermissionPrompt.maybeShow(context)) {
+    // Reminders need permission, asked once with a reason. Not on the very
+    // first Home, where the person has done nothing yet: it waits for the
+    // first logged meal, when a mealtime nudge makes sense. One prompt per
+    // visit, so it goes before upsells.
+    final hasLoggedMeal =
+        ref.read(settingsProvider).valueOrNull?.lastLoggedDate != null;
+    if (hasLoggedMeal && await NotificationPermissionPrompt.maybeShow(context)) {
       AppPromptSessionCoordinator().suppressAutomaticOffers();
       return;
     }
