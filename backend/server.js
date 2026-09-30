@@ -805,7 +805,9 @@ async function fetchRevenueCatEntitlement(uid) {
       {
         headers: { Authorization: `Bearer ${REVENUECAT_SECRET_API_KEY}` },
         timeout: 8000,
-        validateStatus: (status) => status === 200 || status === 404,
+        // RevenueCat answers 201 (not 200) the first time it sees a user id,
+        // because it creates the subscriber on the spot. That is a success.
+        validateStatus: (status) => (status >= 200 && status < 300) || status === 404,
       },
     );
     if (response.status === 404) {
