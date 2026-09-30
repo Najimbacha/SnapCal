@@ -9971,6 +9971,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide password'**
   String get auth_hide_password;
+
+  /// No description provided for @onb_welcome_card_food.
+  ///
+  /// In en, this message translates to:
+  /// **'Chicken rice bowl'**
+  String get onb_welcome_card_food;
+
+  /// No description provided for @onb_welcome_card_scanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanned'**
+  String get onb_welcome_card_scanned;
+
+  /// No description provided for @paywall_plan_per_month_equiv.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ {price} / month'**
+  String paywall_plan_per_month_equiv(String price);
 }
 
 class _AppLocalizationsDelegate

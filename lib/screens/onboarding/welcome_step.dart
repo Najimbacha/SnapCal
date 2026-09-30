@@ -13,10 +13,10 @@ import '../../widgets/motion/shine_sweep.dart';
 import '../../widgets/motion/visible_gate.dart';
 import '../../widgets/motion/word_rise.dart';
 import 'onboarding_kit.dart';
-import 'widgets/ruler_picker.dart';
 
-/// The first screen: the name, one line of promise, and a still ruler that
-/// shows what the next screens feel like.
+/// The first screen: the name, one line of promise, and a sample scan result
+/// that shows what the app does. It is a picture, not a control, so nothing on
+/// it asks to be touched.
 class WelcomeStep extends ConsumerWidget {
   const WelcomeStep({super.key, required this.onGetStarted});
 
@@ -42,21 +42,19 @@ class WelcomeStep extends ConsumerWidget {
                       scale: .4,
                       duration: const Duration(milliseconds: 700),
                       curve: AppMotion.springCurve,
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: const Icon(
-                          AppSymbols.ruler,
-                          size: 17,
-                          color: Colors.white,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/icon/icon.png',
+                          key: const ValueKey('welcome-logo'),
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
+                          excludeFromSemantics: true,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 9),
+                    const SizedBox(width: 12),
                     Reveal(
                       delay: const Duration(milliseconds: 180),
                       offset: const Offset(-8, 0),
@@ -104,8 +102,9 @@ class WelcomeStep extends ConsumerWidget {
           delay: const Duration(milliseconds: 1000),
           offset: const Offset(0, 26),
           duration: const Duration(milliseconds: 640),
-          child: ExcludeSemantics(
-            child: _RollingScale(unit: l10n.settings_unit_kg),
+          child: const Padding(
+            padding: EdgeInsets.only(bottom: 36),
+            child: ExcludeSemantics(child: _MealCard()),
           ),
         ),
         Reveal(
@@ -146,20 +145,24 @@ class WelcomeStep extends ConsumerWidget {
   }
 }
 
-/// The still ruler on the welcome screen, which first rolls up to its
-/// weight: a taste of how the weight question will feel.
-class _RollingScale extends StatefulWidget {
-  const _RollingScale({required this.unit});
-
-  final String unit;
+/// A sample scan result: photo in, calories out. The numbers are fixed
+/// samples, not the user's data. It settles once and never asks to be touched.
+class _MealCard extends StatefulWidget {
+  const _MealCard();
 
   @override
-  State<_RollingScale> createState() => _RollingScaleState();
+  State<_MealCard> createState() => _MealCardState();
 }
 
-class _RollingScaleState extends State<_RollingScale>
+class _MealCardState extends State<_MealCard>
     with SingleTickerProviderStateMixin, VisibleGate {
-  static const _from = 60.0, _to = 72.4;
+  static const _kcal = 520;
+  // Grams of the sample meal, and the share of each bar they fill.
+  static const _macros = [
+    (28, .62, AppColors.protein),
+    (64, .8, AppColors.carbs),
+    (14, .34, AppColors.fat),
+  ];
 
   late final AnimationController _controller;
 
@@ -168,7 +171,7 @@ class _RollingScaleState extends State<_RollingScale>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2700),
+      duration: const Duration(milliseconds: 1800),
     );
     runWhenVisible(() {
       if (AppMotion.reduceMotion(context)) {
@@ -187,43 +190,180 @@ class _RollingScaleState extends State<_RollingScale>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        // Waits for the card to land, then rolls and eases to a stop.
-        final t = const Interval(
-          .45,
-          1,
-          curve: Curves.easeOutQuart,
-        ).transform(_controller.value);
-        final value = ((_from + (_to - _from) * t) * 10).round() / 10;
-        return Column(
-          children: [
-            OnbReadout(
-              value: value.toStringAsFixed(1),
-              unit: widget.unit,
-              size: 44,
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 96,
-              child: RulerPicker(
-                interactive: false,
-                value: value,
-                min: 30,
-                max: 250,
-                step: 0.1,
-                majorEvery: 10,
-                midEvery: 5,
-                labelFor: (v) => v.toStringAsFixed(0),
-                onChanged: (_) {},
-                semanticLabel: '',
-                semanticValueFor: (v) => '',
-              ),
+    final l10n = AppLocalizations.of(context)!;
+    final labels = [l10n.result_protein, l10n.result_carbs, l10n.result_fat];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
+      child: Container(
+        key: const ValueKey('welcome-meal-card'),
+        constraints: const BoxConstraints(maxWidth: 340),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: context.cardBorderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .06),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
             ),
           ],
-        );
-      },
+        ),
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final t = Curves.easeOutQuart.transform(_controller.value);
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        AppSymbols.scan,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        l10n.onb_welcome_card_scanned,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  l10n.onb_welcome_card_food,
+                  style: TextStyle(
+                    color: context.textSecondaryColor,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      '${(_kcal * t).round()}',
+                      style: TextStyle(
+                        color: context.textPrimaryColor,
+                        fontSize: 44,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1.4,
+                        height: 1.1,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        l10n.settings_kcal_unit,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: context.textSecondaryColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                for (var i = 0; i < _macros.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 10),
+                  _MacroBar(
+                    label: labels[i],
+                    grams: (_macros[i].$1 * t).round(),
+                    fill: _macros[i].$2 * t,
+                    color: _macros[i].$3,
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _MacroBar extends StatelessWidget {
+  const _MacroBar({
+    required this.label,
+    required this.grams,
+    required this.fill,
+    required this.color,
+  });
+
+  final String label;
+  final int grams;
+  final double fill;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 84,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: context.textSecondaryColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: Stack(
+              children: [
+                Container(height: 6, color: color.withValues(alpha: .16)),
+                FractionallySizedBox(
+                  widthFactor: fill.clamp(0.0, 1.0),
+                  child: Container(height: 6, color: color),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 44,
+          child: Text(
+            '${grams}g',
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              color: context.textPrimaryColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

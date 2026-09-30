@@ -9,6 +9,7 @@ import 'package:snapcal/screens/onboarding/building_step.dart';
 import 'package:snapcal/screens/onboarding/onboarding_draft.dart';
 import 'package:snapcal/screens/onboarding/onboarding_kit.dart';
 import 'package:snapcal/screens/onboarding/welcome_step.dart';
+import 'package:snapcal/screens/onboarding/widgets/ruler_picker.dart';
 import 'package:snapcal/screens/paywall/paywall_screen.dart';
 
 Widget _host(Widget child, {bool reduceMotion = false}) => ProviderScope(
@@ -127,7 +128,9 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('the welcome scale rolls up to its weight', (tester) async {
+    testWidgets('the welcome screen shows a sample meal card, not a ruler', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _host(
           SizedBox(
@@ -138,11 +141,11 @@ void main() {
         ),
       );
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 1600));
-      // Mid-roll it shows a lower weight, not the one it stops on.
-      expect(find.text('72.4 kg', findRichText: true), findsNothing);
       await tester.pumpAndSettle();
-      expect(find.text('72.4 kg', findRichText: true), findsOneWidget);
+      expect(find.byKey(const ValueKey('welcome-meal-card')), findsOneWidget);
+      expect(find.text('520'), findsOneWidget);
+      expect(find.byType(RulerPicker), findsNothing);
+      expect(find.textContaining('kg', findRichText: true), findsNothing);
     });
 
     testWidgets('the welcome screen lands at once with reduced motion', (
@@ -160,7 +163,7 @@ void main() {
       );
       await tester.pump();
       await tester.pump();
-      expect(find.text('72.4 kg', findRichText: true), findsOneWidget);
+      expect(find.text('520'), findsOneWidget);
     });
   });
 

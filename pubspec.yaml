@@ -80,6 +80,7 @@ dependencies:
   health: ^13.3.1
   firebase_performance: ^0.11.4+1
   firebase_analytics: ^12.4.6
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   mock_exceptions: ^0.8.2
@@ -121,6 +122,7 @@ flutter:
     - assets/icon/
     - assets/images/
     - assets/images/paywall/
+    - assets/illustrations/onboarding/
     - assets/avatar/
   fonts:
     - family: DM Sans

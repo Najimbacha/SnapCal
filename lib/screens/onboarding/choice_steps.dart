@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:snapcal/widgets/app_icon.dart';
 
-import '../../core/theme/app_motion.dart';
 import '../../core/theme/theme_colors.dart';
 import '../../l10n/generated/app_localizations.dart';
 import 'onboarding_draft.dart';
 import 'onboarding_kit.dart';
+import 'widgets/onb_art.dart';
 
 /// The goal: four tiles, an icon and a few words each.
 class GoalStep extends StatelessWidget {
@@ -17,7 +16,7 @@ class GoalStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    Widget tile(GoalType goal, IconData icon, String label) {
+    Widget tile(GoalType goal, String label) {
       final on = selected == goal;
       return OnbOption(
         key: ValueKey('onboarding-goal-${goal.name}'),
@@ -27,8 +26,8 @@ class GoalStep extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            OnbIconWell(icon: icon, selected: on),
-            const SizedBox(height: 36),
+            OnbGoalArt(goal: goal, selected: on),
+            const SizedBox(height: 18),
             Text(
               label,
               style: TextStyle(
@@ -61,29 +60,13 @@ class GoalStep extends StatelessWidget {
           OnbQuestion(l10n.onb_q_goal),
           const SizedBox(height: 22),
           row(
-            tile(
-              GoalType.loseWeight,
-              AppSymbols.trendingDown,
-              l10n.onboarding_goal_lose,
-            ),
-            tile(
-              GoalType.maintainWeight,
-              AppSymbols.balance,
-              l10n.onboarding_goal_maintain,
-            ),
+            tile(GoalType.loseWeight, l10n.onboarding_goal_lose),
+            tile(GoalType.maintainWeight, l10n.onboarding_goal_maintain),
           ),
           const SizedBox(height: 12),
           row(
-            tile(
-              GoalType.buildMuscle,
-              AppSymbols.dumbbell,
-              l10n.onboarding_goal_build,
-            ),
-            tile(
-              GoalType.trackNutrition,
-              AppSymbols.listChecks,
-              l10n.onboarding_goal_track,
-            ),
+            tile(GoalType.buildMuscle, l10n.onboarding_goal_build),
+            tile(GoalType.trackNutrition, l10n.onboarding_goal_track),
           ),
         ],
       ),
@@ -101,7 +84,7 @@ class SexStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    Widget tile(BiologicalSex sex, IconData icon, String label) {
+    Widget tile(BiologicalSex sex, String label) {
       final on = selected == sex;
       return OnbOption(
         key: ValueKey('onboarding-sex-${sex.name}'),
@@ -112,16 +95,7 @@ class SexStep extends StatelessWidget {
         onTap: () => onChanged(sex),
         child: Column(
           children: [
-            AnimatedContainer(
-              duration: AppMotion.maybeZero(context, AppMotion.expansion),
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: on ? context.cardColor : context.onbFill,
-              ),
-              child: Icon(icon, size: 30, color: context.textPrimaryColor),
-            ),
+            OnbSexArt(sex: sex, selected: on),
             const SizedBox(height: 14),
             Text(
               label,
@@ -148,20 +122,10 @@ class SexStep extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: tile(
-                    BiologicalSex.female,
-                    AppSymbols.female,
-                    l10n.onboarding_female,
-                  ),
+                  child: tile(BiologicalSex.female, l10n.onboarding_female),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: tile(
-                    BiologicalSex.male,
-                    AppSymbols.male,
-                    l10n.onboarding_male,
-                  ),
-                ),
+                Expanded(child: tile(BiologicalSex.male, l10n.onboarding_male)),
               ],
             ),
           ),
@@ -210,7 +174,6 @@ class ActivityStep extends StatelessWidget {
             _ActivityRow(
               index: i,
               level: levels[i].$1,
-              bars: i + 1,
               title: levels[i].$2,
               hint: levels[i].$3,
               selected: selected == levels[i].$1,
@@ -227,7 +190,6 @@ class _ActivityRow extends StatelessWidget {
   const _ActivityRow({
     required this.index,
     required this.level,
-    required this.bars,
     required this.title,
     required this.hint,
     required this.selected,
@@ -236,7 +198,6 @@ class _ActivityRow extends StatelessWidget {
 
   final int index;
   final ActivityLevel level;
-  final int bars;
   final String title;
   final String hint;
   final bool selected;
@@ -253,7 +214,7 @@ class _ActivityRow extends StatelessWidget {
       onTap: onTap,
       child: Row(
         children: [
-          _LevelMeter(filled: bars, selected: selected),
+          OnbActivityArt(level: level, selected: selected),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -281,51 +242,6 @@ class _ActivityRow extends StatelessWidget {
           const SizedBox(width: 12),
           OnbTick(selected: selected),
         ],
-      ),
-    );
-  }
-}
-
-/// Four rising bars, [filled] of them lit: how hard a week is.
-class _LevelMeter extends StatelessWidget {
-  const _LevelMeter({required this.filled, required this.selected});
-
-  final int filled;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final on = selected ? context.primaryColor : context.textPrimaryColor;
-    return ExcludeSemantics(
-      child: SizedBox(
-        width: 33,
-        height: 24,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            for (var i = 0; i < 4; i++) ...[
-              if (i > 0) const SizedBox(width: 3),
-              // Lit bars change colour one after another, bottom to top.
-              TweenAnimationBuilder<Color?>(
-                tween: ColorTween(end: i < filled ? on : context.onbFill),
-                duration: AppMotion.maybeZero(
-                  context,
-                  Duration(milliseconds: 160 + 70 * i),
-                ),
-                curve: Interval(i * .18, 1, curve: Curves.easeOut),
-                builder:
-                    (context, color, _) => Container(
-                      width: 6,
-                      height: 8 + i * 5.33,
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }

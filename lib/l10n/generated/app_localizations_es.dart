@@ -5655,4 +5655,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get auth_hide_password => 'Ocultar contraseña';
+
+  @override
+  String get onb_welcome_card_food => 'Bol de arroz con pollo';
+
+  @override
+  String get onb_welcome_card_scanned => 'Escaneado';
+
+  @override
+  String paywall_plan_per_month_equiv(String price) {
+    return '≈ $price / mes';
+  }
 }
