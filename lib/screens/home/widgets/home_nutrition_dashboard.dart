@@ -14,6 +14,10 @@ const _sage = Color(0xFF82A789);
 const _blue = Color(0xFF6B9BCB);
 const _amber = Color(0xFFD6A14F);
 
+/// The gap between an icon tile and its text, the same on every card on Home.
+/// It was 8 in the wellness card and 13 in the tools card.
+const _iconGap = 12.0;
+
 class _Chevron extends StatelessWidget {
   const _Chevron();
   @override
@@ -618,7 +622,7 @@ class _WellnessMetric extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _MetricIconTile(color: color, child: icon),
-                const SizedBox(width: 8),
+                const SizedBox(width: _iconGap),
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -816,7 +820,7 @@ class _ToolRow extends StatelessWidget {
             ),
             child: SizedBox(width: 28, height: 30, child: icon),
           ),
-          const SizedBox(width: 13),
+          const SizedBox(width: _iconGap),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

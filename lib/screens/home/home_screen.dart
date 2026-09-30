@@ -126,7 +126,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // visit, so it goes before upsells.
     final hasLoggedMeal =
         ref.read(settingsProvider).valueOrNull?.lastLoggedDate != null;
-    if (hasLoggedMeal && await NotificationPermissionPrompt.maybeShow(context)) {
+    if (hasLoggedMeal &&
+        await NotificationPermissionPrompt.maybeShow(context)) {
       AppPromptSessionCoordinator().suppressAutomaticOffers();
       return;
     }
@@ -541,7 +542,11 @@ class _MinimalHomeTopBar extends StatelessWidget {
       // One gutter for the whole screen. The top bar sat at 22 and the hero at
       // 24 while every section below used 20, so the left edge stepped in and
       // out three times on the way down.
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      // The settings glyph is 20 wide inside a 48 tap box, so its visible edge
+      // sits 14 inside the box. The end margin is 14 smaller than the start,
+      // so the glyph's edge lands on the same 20 gutter as every card below
+      // it, while the tap box stays a full 48.
+      padding: const EdgeInsetsDirectional.only(start: 20, end: 6),
       child: Row(
         children: [
           // Branding flexes so controls remain reachable at large text sizes.
