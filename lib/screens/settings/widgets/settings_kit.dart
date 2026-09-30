@@ -18,7 +18,6 @@ import '../../../widgets/ui_blocks.dart';
 import '../../../widgets/wazn_icons.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../widgets/motion/rolling_number.dart';
-import '../../../widgets/motion/theme_reveal.dart';
 import '../../../widgets/motion/visible_gate.dart';
 import '../../../widgets/app_toast.dart';
 
@@ -1515,156 +1514,111 @@ class SettingsThemeRow extends ConsumerWidget {
       ),
     ];
 
+    // The section above is already called "App Appearance": no second title,
+    // no indent. Just the three choices, full width and easy to hit.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ─── Label row ───
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: kSettingsGreenText.withValues(
-                    alpha: isDark ? 0.14 : 0.09,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : kSettingsLine.withValues(alpha: 0.65),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: AnimatedAlign(
+                alignment: switch (options.indexWhere(
+                  (o) => o.$1 == currentMode,
+                )) {
+                  0 => AlignmentDirectional.centerStart,
+                  1 => AlignmentDirectional.center,
+                  _ => AlignmentDirectional.centerEnd,
+                },
+                // Short and smooth, with no overshoot.
+                duration: AppMotion.maybeZero(
+                  context,
+                  const Duration(milliseconds: 180),
                 ),
-                child: Center(
-                  child: Icon(
-                    WaznIcons.theme,
-                    color: kSettingsGreenText,
-                    size: 16,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Text(
-                AppLocalizations.of(context)!.settings_appearance,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.titleMedium.copyWith(
-                  color: settingsText(context),
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
-                  fontSize: 15,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // ─── Segmented picker — full width below, indented past icon ───
-          // One thumb slides to the option picked, and the new look spreads
-          // out in a circle from the tap.
-          Padding(
-            padding: const EdgeInsets.only(left: 46),
-            child: Container(
-              height: 36,
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color:
-                    isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : kSettingsLine.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: AnimatedAlign(
-                      alignment: switch (options.indexWhere(
-                        (o) => o.$1 == currentMode,
-                      )) {
-                        0 => AlignmentDirectional.centerStart,
-                        1 => AlignmentDirectional.center,
-                        _ => AlignmentDirectional.centerEnd,
-                      },
-                      duration: AppMotion.maybeZero(
-                        context,
-                        const Duration(milliseconds: 420),
-                      ),
-                      curve: AppMotion.springCurve,
-                      child: FractionallySizedBox(
-                        widthFactor: 1 / 3,
-                        heightFactor: 1,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color:
-                                isDark
-                                    ? Colors.white.withValues(alpha: 0.09)
-                                    : kSettingsBgLight,
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: isDark ? 0.15 : 0.05,
-                                ),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
+                curve: Curves.easeOutCubic,
+                child: FractionallySizedBox(
+                  widthFactor: 1 / 3,
+                  heightFactor: 1,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.09)
+                              : kSettingsBgLight,
+                      borderRadius: BorderRadius.circular(9),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.15 : 0.05,
                           ),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                  Row(
-                    children:
-                        options.map((opt) {
-                          final isSelected = currentMode == opt.$1;
-                          return Expanded(
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTapUp: (details) {
-                                if (isSelected) return;
-                                HapticFeedback.selectionClick();
-                                ThemeReveal.run(
-                                  context,
-                                  origin: details.globalPosition,
-                                  change:
-                                      () =>
-                                          settingsNotifier.setThemeMode(opt.$1),
-                                );
-                              },
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    opt.$3,
-                                    size: 13,
-                                    color:
-                                        isSelected
-                                            ? kSettingsGreenText
-                                            : settingsSubtext(context),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    opt.$2,
-                                    style: AppTypography.labelMedium.copyWith(
-                                      fontSize: 12,
-                                      fontWeight:
-                                          isSelected
-                                              ? FontWeight.w600
-                                              : FontWeight.w500,
-                                      color:
-                                          isSelected
-                                              ? kSettingsGreenText
-                                              : settingsSubtext(context),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+            Row(
+              children:
+                  options.map((opt) {
+                    final isSelected = currentMode == opt.$1;
+                    return Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        // The theme changes at once. It used to photograph the
+                        // whole screen and redraw the picture every frame
+                        // while the app rebuilt underneath, which is what made
+                        // the button stutter.
+                        onTap: () {
+                          if (isSelected) return;
+                          HapticFeedback.selectionClick();
+                          settingsNotifier.setThemeMode(opt.$1);
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              opt.$3,
+                              size: 16,
+                              color:
+                                  isSelected
+                                      ? kSettingsGreenText
+                                      : settingsSubtext(context),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              opt.$2,
+                              style: AppTypography.labelMedium.copyWith(
+                                fontSize: 14,
+                                fontWeight:
+                                    isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                color:
+                                    isSelected
+                                        ? kSettingsGreenText
+                                        : settingsSubtext(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
