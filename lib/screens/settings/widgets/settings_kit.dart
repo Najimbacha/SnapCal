@@ -1569,53 +1569,63 @@ class SettingsThemeRow extends ConsumerWidget {
                 ),
               ),
             ),
-            Row(
-              children:
-                  options.map((opt) {
-                    final isSelected = currentMode == opt.$1;
-                    return Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        // The theme changes at once. It used to photograph the
-                        // whole screen and redraw the picture every frame
-                        // while the app rebuilt underneath, which is what made
-                        // the button stutter.
-                        onTap: () {
-                          if (isSelected) return;
-                          HapticFeedback.selectionClick();
-                          settingsNotifier.setThemeMode(opt.$1);
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              opt.$3,
-                              size: 16,
-                              color:
-                                  isSelected
-                                      ? kSettingsGreenText
-                                      : settingsSubtext(context),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              opt.$2,
-                              style: AppTypography.labelMedium.copyWith(
-                                fontSize: 14,
-                                fontWeight:
-                                    isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w500,
+            Positioned.fill(
+              child: Row(
+                // Stretch, so each button is as tall as the track and the
+                // whole of it takes a tap, not just the height of its label.
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children:
+                    options.map((opt) {
+                      final isSelected = currentMode == opt.$1;
+                      return Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          // The theme changes at once. It used to photograph the
+                          // whole screen and redraw the picture every frame
+                          // while the app rebuilt underneath, which is what made
+                          // the button stutter.
+                          onTap: () {
+                            if (isSelected) return;
+                            HapticFeedback.selectionClick();
+                            settingsNotifier.setThemeMode(opt.$1);
+                          },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Icon(
+                                opt.$3,
+                                size: 16,
                                 color:
                                     isSelected
                                         ? kSettingsGreenText
-                                        : settingsSubtext(context),
+                                        : settingsText(
+                                          context,
+                                        ).withValues(alpha: 0.65),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 6),
+                              Text(
+                                opt.$2,
+                                style: AppTypography.labelMedium.copyWith(
+                                  fontSize: 14,
+                                  fontWeight:
+                                      isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                  color:
+                                      isSelected
+                                          ? kSettingsGreenText
+                                          : settingsText(
+                                            context,
+                                          ).withValues(alpha: 0.65),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+              ),
             ),
           ],
         ),

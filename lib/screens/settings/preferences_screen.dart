@@ -237,6 +237,16 @@ class PreferencesScreen extends ConsumerWidget {
                       SettingsThemeRow(
                         currentMode: settings?.themeMode ?? 'system',
                       ),
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color:
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white10
+                                : kSettingsLine,
+                      ),
                       SettingsRow(
                         icon: WaznIcons.languages,
                         title: l10n.settings_language,
