@@ -216,7 +216,6 @@ class PreferencesScreen extends ConsumerWidget {
                     return SettingsRow(
                       icon: WaznIcons.mapPin,
                       title: l10n.quick_add_region,
-                      subtitle: l10n.quick_add_region_subtitle,
                       value: quickFoodRegionLabel(l10n, region),
                       onTap: () => showQuickFoodRegionSheet(context, ref),
                     );
