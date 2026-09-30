@@ -248,12 +248,11 @@ GoRouter router(RouterRef ref) {
         builder:
             (context, state, navigationShell) =>
                 MainShell(navigationShell: navigationShell),
-        // Like the indexed stack, every tab stays alive; switching between
-        // them glides instead of cutting. The camera (branch 2) only fades.
+        // Like the indexed stack, every tab stays alive and a tap switches
+        // at once.
         navigatorContainerBuilder:
             (context, navigationShell, children) => TabSwitcher(
               currentIndex: navigationShell.currentIndex,
-              fadeOnlyIndex: 2,
               children: children,
             ),
         branches: [

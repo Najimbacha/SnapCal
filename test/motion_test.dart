@@ -157,9 +157,7 @@ void main() {
   });
 
   group('TabSwitcher', () {
-    testWidgets('keeps every page alive and shows only the current one', (
-      tester,
-    ) async {
+    testWidgets('keeps every page alive and switches at once', (tester) async {
       Widget tabs(int index) => _app(
         SizedBox(
           width: 300,
@@ -176,12 +174,10 @@ void main() {
       expect(find.text('a 1'), findsOneWidget);
 
       await tester.pumpWidget(tabs(1));
-      await tester.pump(const Duration(milliseconds: 100));
-      // Mid-switch both pages are on screen.
-      expect(find.text('a 1'), findsOneWidget);
-      expect(find.text('b 0'), findsOneWidget);
-      await tester.pumpAndSettle();
+      await tester.pump();
+      // A tap switches at once: no frame with both pages on screen.
       expect(find.text('a 1'), findsNothing);
+      expect(find.text('b 0'), findsOneWidget);
       expect(find.text('a 1', skipOffstage: false), findsOneWidget);
 
       await tester.pumpWidget(tabs(0));
