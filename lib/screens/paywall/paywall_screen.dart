@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -75,7 +74,7 @@ class _Pw {
     line: Color(0xFF22302A),
     ink: Color(0xFFEEF3EF),
     muted: Color(0xFF93A198),
-    faint: Color(0xFF5E6B63),
+    faint: Color(0xFF7D8A82),
     em: Color(0xFF34D399),
     onEm: Color(0xFF04150D),
     amber: Color(0xFFF5A524),
@@ -93,7 +92,7 @@ class _Pw {
       line: s.outlineVariant,
       ink: s.onSurface,
       muted: s.onSurfaceVariant,
-      faint: s.outline,
+      faint: s.onSurfaceVariant,
       em: s.primary,
       onEm: s.onPrimary,
       amber: const Color(0xFFB7791F),
@@ -717,9 +716,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               _buildTop(context),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 8),
                               _buildHeader(context, l10n),
-                              const SizedBox(height: 18),
+                              const SizedBox(height: 16),
                               Reveal(
                                 delay: const Duration(milliseconds: 520),
                                 offset: const Offset(0, 24),
@@ -741,7 +740,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                               ..._buildNotices(),
                               const SizedBox(height: 10),
                               _buildPlans(l10n),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 16),
                               Reveal(
                                 delay: const Duration(milliseconds: 1050),
                                 offset: const Offset(0, 24),
@@ -782,7 +781,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: _pw.muted,
-                                    fontSize: 12.5,
+                                    fontSize: 12,
                                     height: 1.35,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -825,14 +824,20 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               if (_isLoading || _restoring) return;
               if (context.canPop()) context.pop();
             },
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: _pw.wash.withValues(alpha: 0.06),
-                shape: BoxShape.circle,
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Center(
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: _pw.wash.withValues(alpha: 0.06),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(WaznIcons.close, size: 18, color: _pw.muted),
+                ),
               ),
-              child: Icon(WaznIcons.close, size: 17, color: _pw.muted),
             ),
           ),
         ),
@@ -848,7 +853,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               onTap: (_isLoading || _restoring) ? null : _handleRestore,
               palette: _pw,
               busy: _restoring,
-              size: 13.5,
+              size: 14,
             ),
           ),
         ),
@@ -906,7 +911,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             headline,
             style: TextStyle(
               color: general ? _pw.muted : _pw.ink,
-              fontSize: 15.5,
+              fontSize: 16,
               height: 1.35,
               fontWeight: FontWeight.w500,
             ),
@@ -1170,215 +1175,92 @@ class _CompareRowData {
   final bool warning;
 }
 
-class _CompareCard extends StatefulWidget {
+/// Free and Pro side by side, both always in view: what a feature is, what
+/// Free gets, what Pro gets. The familiar comparison table, with nothing to
+/// tap to find out what you are missing.
+class _CompareCard extends StatelessWidget {
   const _CompareCard({required this.rows});
 
   final List<_CompareRowData> rows;
 
-  @override
-  State<_CompareCard> createState() => _CompareCardState();
-}
-
-class _CompareCardState extends State<_CompareCard> {
-  // Opens on Pro: this is the screen that sells it. Free is one tap away.
-  bool _pro = true;
-
-  void _set(bool pro) {
-    if (pro == _pro) return;
-    HapticFeedback.selectionClick();
-    setState(() => _pro = pro);
-  }
+  static const _labelFlex = 5;
+  static const _valueFlex = 3;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return AnimatedContainer(
+    return Container(
       key: const ValueKey('paywall-compare'),
-      duration: AppMotion.maybeZero(context, const Duration(milliseconds: 450)),
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       decoration: BoxDecoration(
         color: _pw.card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: _pro ? _pw.em.withValues(alpha: 0.4) : _pw.line,
-        ),
+        border: Border.all(color: _pw.line),
       ),
       child: Column(
         children: [
-          _Switch(
-            pro: _pro,
-            onChanged: _set,
-            free: l10n.paywall_compare_free,
-            proLabel: l10n.paywall_compare_pro,
-          ),
-          const SizedBox(height: 6),
-          for (var i = 0; i < widget.rows.length; i++)
-            _CompareRow(
-              data: widget.rows[i],
-              pro: _pro,
-              order: i,
-              first: i == 0,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Switch extends StatelessWidget {
-  const _Switch({
-    required this.pro,
-    required this.onChanged,
-    required this.free,
-    required this.proLabel,
-  });
-
-  final bool pro;
-  final ValueChanged<bool> onChanged;
-  final String free;
-  final String proLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget option(String text, bool value) => Expanded(
-      child: Semantics(
-        button: true,
-        selected: pro == value,
-        child: GestureDetector(
-          key: ValueKey('paywall-switch-${value ? 'pro' : 'free'}'),
-          behavior: HitTestBehavior.opaque,
-          onTap: () => onChanged(value),
-          child: Center(
-            child: AnimatedDefaultTextStyle(
-              duration: Duration.zero,
-              // Merged, not replaced: a bare style here dropped the font.
-              style: DefaultTextStyle.of(context).style.copyWith(
-                color: pro == value ? (value ? _pw.onEm : _pw.ink) : _pw.muted,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-              child: Text(text),
-            ),
-          ),
-        ),
-      ),
-    );
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: _pw.wash.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Stack(
-        children: [
-          AnimatedAlign(
-            alignment:
-                pro
-                    ? AlignmentDirectional.centerEnd
-                    : AlignmentDirectional.centerStart,
-            duration: AppMotion.maybeZero(
-              context,
-              const Duration(milliseconds: 450),
-            ),
-            curve: AppMotion.springCurve,
-            child: FractionallySizedBox(
-              widthFactor: .5,
-              heightFactor: 1,
-              child: AnimatedContainer(
-                duration: Duration.zero,
-                decoration: BoxDecoration(
-                  color: pro ? _pw.em : _pw.wash.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(9),
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: Row(
+              children: [
+                const Spacer(flex: _labelFlex),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: _valueFlex,
+                  child: Text(
+                    l10n.paywall_compare_free,
+                    style: TextStyle(
+                      color: _pw.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: _valueFlex,
+                  child: Text(
+                    l10n.paywall_compare_pro,
+                    style: TextStyle(
+                      color: _pw.em,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          Row(children: [option(free, false), option(proLabel, true)]),
+          for (var i = 0; i < rows.length; i++)
+            _CompareRow(data: rows[i], index: i),
         ],
       ),
     );
   }
 }
 
-/// One line of the comparison. Its value turns over, top to bottom a
-/// moment after the one above, when the switch moves.
-class _CompareRow extends StatefulWidget {
-  const _CompareRow({
-    required this.data,
-    required this.pro,
-    required this.order,
-    required this.first,
-  });
+class _CompareRow extends StatelessWidget {
+  const _CompareRow({required this.data, required this.index});
 
   final _CompareRowData data;
-  final bool pro;
-  final int order;
-  final bool first;
-
-  @override
-  State<_CompareRow> createState() => _CompareRowState();
-}
-
-class _CompareRowState extends State<_CompareRow>
-    with SingleTickerProviderStateMixin {
-  static const _turn = Duration(milliseconds: 520);
-  static const _step = Duration(milliseconds: 70);
-
-  late final AnimationController _flip = AnimationController(
-    vsync: this,
-    duration: _turn + _step * widget.order,
-    value: widget.pro ? 1 : 0,
-  );
-
-  @override
-  void didUpdateWidget(_CompareRow oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.pro == oldWidget.pro) return;
-    if (AppMotion.reduceMotion(context)) {
-      _flip.value = widget.pro ? 1 : 0;
-    } else if (widget.pro) {
-      _flip.forward();
-    } else {
-      _flip.reverse();
-    }
-  }
-
-  @override
-  void dispose() {
-    _flip.dispose();
-    super.dispose();
-  }
+  final int index;
 
   @override
   Widget build(BuildContext context) {
-    final data = widget.data;
-    final total = _turn + _step * widget.order;
-    final wait = (_step * widget.order).inMicroseconds / total.inMicroseconds;
     return Container(
-      constraints: const BoxConstraints(minHeight: 43),
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      constraints: const BoxConstraints(minHeight: 48),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        border: widget.first ? null : Border(top: BorderSide(color: _pw.line)),
+        border: Border(top: BorderSide(color: _pw.line)),
       ),
-      // Name on the start edge, value on the end edge; each takes the room
-      // it needs, and both wrap rather than overflow on a narrow phone.
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Flexible(
-            flex: 3,
+          Expanded(
+            flex: _CompareCard._labelFlex,
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                TweenAnimationBuilder<Color?>(
-                  tween: ColorTween(end: widget.pro ? _pw.em : _pw.faint),
-                  duration: AppMotion.maybeZero(context, AppMotion.expansion),
-                  builder:
-                      (context, color, _) =>
-                          Icon(data.icon, size: 18, color: color),
-                ),
-                const SizedBox(width: 12),
+                Icon(data.icon, size: 18, color: _pw.muted),
+                const SizedBox(width: 8),
                 Flexible(
                   child: Text(
                     data.label,
@@ -1386,7 +1268,7 @@ class _CompareRowState extends State<_CompareRow>
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: _pw.ink,
-                      fontSize: 14.5,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1395,46 +1277,33 @@ class _CompareRowState extends State<_CompareRow>
             ),
           ),
           const SizedBox(width: 8),
-          Flexible(
-            flex: 2,
-            child: AnimatedBuilder(
-              animation: _flip,
-              builder: (context, _) {
-                final t = Curves.easeInOut.transform(
-                  ((_flip.value - wait) / (1 - wait)).clamp(0.0, 1.0),
-                );
-                final showPro = t >= .5;
-                // Turns away on one side and comes round on the other.
-                final angle =
-                    showPro
-                        ? -(1 - t) / .5 * math.pi / 2
-                        : t / .5 * math.pi / 2;
-                return Transform(
-                  alignment: Alignment.center,
-                  transform:
-                      Matrix4.identity()
-                        ..setEntry(3, 2, 0.002)
-                        ..rotateX(angle),
-                  child: Text(
-                    showPro ? data.pro : data.free,
-                    key: ValueKey('paywall-row-${widget.order}'),
-                    maxLines: 2,
-                    textAlign: TextAlign.end,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color:
-                          showPro
-                              ? _pw.em
-                              : (data.warning ? _pw.amber : _pw.muted),
-                      fontSize: 14,
-                      fontWeight:
-                          showPro || data.warning
-                              ? FontWeight.w700
-                              : FontWeight.w600,
-                    ),
-                  ),
-                );
-              },
+          Expanded(
+            flex: _CompareCard._valueFlex,
+            child: Text(
+              data.free,
+              key: ValueKey('paywall-free-$index'),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: data.warning ? _pw.amber : _pw.muted,
+                fontSize: 14,
+                fontWeight: data.warning ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: _CompareCard._valueFlex,
+            child: Text(
+              data.pro,
+              key: ValueKey('paywall-pro-$index'),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: _pw.em,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -1455,8 +1324,8 @@ class _EverythingLink extends StatelessWidget {
       key: const ValueKey('paywall-see-everything'),
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1465,7 +1334,7 @@ class _EverythingLink extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: _pw.em,
-                  fontSize: 13.5,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1507,7 +1376,7 @@ class _EverythingSheet extends StatelessWidget {
               title,
               style: TextStyle(
                 color: _pw.ink,
-                fontSize: 19,
+                fontSize: 20,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1531,7 +1400,7 @@ class _EverythingSheet extends StatelessWidget {
                             items[i].$1,
                             style: TextStyle(
                               color: _pw.ink,
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1540,7 +1409,7 @@ class _EverythingSheet extends StatelessWidget {
                             items[i].$2,
                             style: TextStyle(
                               color: _pw.muted,
-                              fontSize: 13,
+                              fontSize: 14,
                               height: 1.3,
                             ),
                           ),
@@ -1586,6 +1455,8 @@ class _PlanData {
   final String? extra;
 }
 
+/// One row per plan, full width, the way most subscription screens list them:
+/// a radio mark, the name (and a saving), and the price on the far side.
 class _PlanTiles extends StatelessWidget {
   const _PlanTiles({
     required this.plans,
@@ -1597,81 +1468,26 @@ class _PlanTiles extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelect;
 
-  static const _gap = 10.0;
-
   @override
   Widget build(BuildContext context) {
-    final count = plans.length;
-    final i = selectedIndex;
-    final slide = AppMotion.maybeZero(
-      context,
-      const Duration(milliseconds: 450),
-    );
-    return IntrinsicHeight(
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var k = 0; k < count; k++) ...[
-                if (k > 0) const SizedBox(width: _gap),
-                Expanded(
-                  child: Reveal(
-                    delay: Duration(milliseconds: 850 + 80 * k),
-                    offset: const Offset(0, 20),
-                    child: _PlanTile(
-                      data: plans[k],
-                      selected: k == i,
-                      onTap: () => onSelect(k),
-                    ),
-                  ),
-                ),
-              ],
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var k = 0; k < plans.length; k++) ...[
+          if (k > 0) const SizedBox(height: 8),
+          _PlanRow(
+            data: plans[k],
+            selected: k == selectedIndex,
+            onTap: () => onSelect(k),
           ),
-          // The outline takes one equal slot of the row and trims the gaps
-          // off its sides, so it sits exactly on the chosen tile.
-          if (i >= 0 && count > 0)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: AnimatedAlign(
-                  alignment: AlignmentDirectional(
-                    count == 1 ? 0 : -1 + 2 * i / (count - 1),
-                    0,
-                  ),
-                  duration: slide,
-                  curve: AppMotion.springCurve,
-                  child: FractionallySizedBox(
-                    widthFactor: 1 / count,
-                    heightFactor: 1,
-                    child: AnimatedPadding(
-                      duration: slide,
-                      curve: AppMotion.springCurve,
-                      padding: EdgeInsetsDirectional.only(
-                        start: _gap * i / count,
-                        end: _gap * (count - 1 - i) / count,
-                      ),
-                      child: DecoratedBox(
-                        key: const ValueKey('paywall-plan-ring'),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: _pw.em, width: 2),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
         ],
-      ),
+      ],
     );
   }
 }
 
-class _PlanTile extends StatelessWidget {
-  const _PlanTile({
+class _PlanRow extends StatelessWidget {
+  const _PlanRow({
     required this.data,
     required this.selected,
     required this.onTap,
@@ -1683,121 +1499,162 @@ class _PlanTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Under the price: the yearly price over a month, or the period.
+    final under =
+        data.extra ??
+        (data.noteIsOffer || data.note.isEmpty ? null : data.note);
     return Semantics(
       button: true,
       selected: selected,
+      inMutuallyExclusiveGroup: true,
       child: GestureDetector(
+        key: ValueKey('paywall-plan-${data.label}'),
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
-              decoration: BoxDecoration(
-                color:
-                    selected
-                        ? Color.alphaBlend(
-                          _pw.em.withValues(alpha: _pw.isDark ? 0.10 : 0.07),
-                          _pw.card,
-                        )
-                        : _pw.card,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _pw.line),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // The name, with the saving beside it rather than on the
-                  // edge, where the chosen outline would run through it.
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 64),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color:
+                selected
+                    ? Color.alphaBlend(
+                      _pw.em.withValues(alpha: _pw.isDark ? 0.10 : 0.07),
+                      _pw.card,
+                    )
+                    : _pw.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? _pw.em : _pw.line,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              _RadioMark(selected: selected),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          data.label,
+                          style: TextStyle(
+                            color: _pw.ink,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (data.badge != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _pw.em,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              data.badge!,
+                              style: TextStyle(
+                                color: _pw.onEm,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (data.noteIsOffer && data.note.isNotEmpty) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        data.label,
+                        data.note,
+                        style: TextStyle(
+                          color: _pw.em,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Flexible, and the price scales down rather than overflow: a long
+              // currency or a large text size must not push the row wide.
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: Text(
+                        data.price,
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: _pw.ink,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                    if (under != null)
+                      Text(
+                        under,
+                        textAlign: TextAlign.end,
                         style: TextStyle(
                           color: _pw.muted,
-                          fontSize: 12.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (data.badge != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _pw.em,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            data.badge!,
-                            style: TextStyle(
-                              color: _pw.onEm,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: .3,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      data.price,
-                      maxLines: 1,
-                      style: TextStyle(
-                        color: _pw.ink,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ),
-                  if (data.note.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      data.note,
-                      maxLines: 2,
-                      style: TextStyle(
-                        color: data.noteIsOffer ? _pw.em : _pw.faint,
-                        fontSize: 11.5,
-                        height: 1.25,
-                        fontWeight:
-                            data.noteIsOffer
-                                ? FontWeight.w700
-                                : FontWeight.w600,
-                      ),
-                    ),
                   ],
-                  if (data.extra != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      data.extra!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _pw.muted,
-                        fontSize: 11.5,
-                        height: 1.25,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// The radio circle: filled when chosen. A shape, not only a colour.
+class _RadioMark extends StatelessWidget {
+  const _RadioMark({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 24,
+      height: 24,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: selected ? _pw.em : _pw.faint, width: 2),
+      ),
+      child:
+          selected
+              ? Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: _pw.em,
+                  shape: BoxShape.circle,
+                ),
+              )
+              : null,
     );
   }
 }
@@ -1807,18 +1664,16 @@ class _PlanSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
         for (var i = 0; i < 2; i++) ...[
-          if (i > 0) const SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              height: 84,
-              decoration: BoxDecoration(
-                color: _pw.card,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _pw.line),
-              ),
+          if (i > 0) const SizedBox(height: 8),
+          Container(
+            height: 64,
+            decoration: BoxDecoration(
+              color: _pw.card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _pw.line),
             ),
           ),
         ],
@@ -1859,7 +1714,7 @@ class _NoticeBanner extends StatelessWidget {
               message,
               style: TextStyle(
                 color: palette.ink,
-                fontSize: 13,
+                fontSize: 14,
                 height: 1.4,
                 fontWeight: FontWeight.w500,
               ),
@@ -2005,7 +1860,7 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: _pw.onEm,
-                                  fontSize: 17,
+                                  fontSize: 16,
                                   letterSpacing: 0,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -2122,7 +1977,7 @@ class _FooterLink extends StatelessWidget {
     required this.onTap,
     required this.palette,
     this.busy = false,
-    this.size = 11.5,
+    this.size = 12,
   });
 
   final String label;
@@ -2144,32 +1999,40 @@ class _FooterLink extends StatelessWidget {
       // these sit shoulder to shoulder in a Wrap. One of them is Restore
       // Purchases -- the control a returning subscriber needs to get back
       // what they already paid for, and the one the stores require here.
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        child:
-            busy
-                ? SizedBox(
-                  height: 14,
-                  width: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.8,
-                    valueColor: AlwaysStoppedAnimation<Color>(palette.muted),
-                  ),
-                )
-                : Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    // Dimmed when there is nothing behind the tap, so a
-                    // disabled link does not look like a live one.
-                    color: palette.muted.withValues(
-                      alpha: onTap == null ? 0.4 : 1,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Center(
+            widthFactor: 1,
+            child:
+                busy
+                    ? SizedBox(
+                      height: 14,
+                      width: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.8,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          palette.muted,
+                        ),
+                      ),
+                    )
+                    : Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        // Dimmed when there is nothing behind the tap, so a
+                        // disabled link does not look like a live one.
+                        color: palette.muted.withValues(
+                          alpha: onTap == null ? 0.4 : 1,
+                        ),
+                        fontSize: size,
+                        height: 1.2,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    fontSize: size,
-                    height: 1.2,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+          ),
+        ),
       ),
     );
   }

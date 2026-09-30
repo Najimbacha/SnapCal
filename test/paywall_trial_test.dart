@@ -126,17 +126,12 @@ void main() {
     expect(find.textContaining('free trial'), findsNothing);
   });
 
-  testWidgets('Free and Pro can be flipped by hand', (tester) async {
+  testWidgets('Free and Pro are shown side by side', (tester) async {
     await _open(tester, _annual());
-    // It has moved to Pro by itself.
+    // Both columns are in view at once; nothing to flip.
     expect(find.text('Full week'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('paywall-switch-free')));
-    for (var i = 0; i < 12; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
     expect(find.text('1 day'), findsOneWidget);
     expect(find.text('1 question a day'), findsOneWidget);
-    expect(find.text('Full week'), findsNothing);
 
     await tester.tap(find.text('See everything in Pro'));
     for (var i = 0; i < 10; i++) {

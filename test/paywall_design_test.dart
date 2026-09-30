@@ -132,13 +132,11 @@ void main() {
         });
       }
       if (scenario.$5 == 'en') {
-        // One card compares Free and Pro, and moves to Pro by itself once.
+        // One table shows Free and Pro side by side, with nothing to tap.
         expect(find.byKey(const ValueKey('paywall-compare')), findsOneWidget);
         expect(find.text('Wazn Pro'), findsOneWidget);
-        await tester.pump(const Duration(seconds: 2));
-        await tester.pump(const Duration(seconds: 1));
         expect(find.text('Full week'), findsOneWidget);
-        expect(find.text('1 day'), findsNothing);
+        expect(find.text('1 day'), findsOneWidget);
 
         // Both plans are in view beside the button, with no scrolling.
         await tester.ensureVisible(find.text('Monthly'));

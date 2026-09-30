@@ -205,7 +205,7 @@ void main() {
       monthly: monthly,
     );
 
-    testWidgets('the outline glides to the plan picked', (tester) async {
+    testWidgets('choosing a plan changes the button at once', (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -230,21 +230,11 @@ void main() {
       for (var i = 0; i < 30; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
-      final ring = find.byKey(const ValueKey('paywall-plan-ring'));
-      expect(ring, findsOneWidget);
       expect(find.text('Start Yearly — SAR 119.99'), findsOneWidget);
 
-      // The plans sit side by side, so the outline glides sideways.
-      final before = tester.getTopLeft(ring).dx;
+      // The plans are rows; choosing one changes the button at once.
       await tester.tap(find.text('Monthly'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 120));
-      final midway = tester.getTopLeft(ring).dx;
-      await tester.pump(const Duration(seconds: 1));
-      final end = tester.getTopLeft(ring).dx;
-      expect(end, greaterThan(before));
-      expect(midway, greaterThan(before));
-      expect(midway, lessThan(end + 12));
       expect(find.text('Start Monthly — SAR 19.99'), findsOneWidget);
       expect(find.text('Start Yearly — SAR 119.99'), findsNothing);
 
