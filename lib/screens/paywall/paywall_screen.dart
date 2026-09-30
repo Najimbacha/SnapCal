@@ -29,30 +29,83 @@ import '../../widgets/app_toast.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // PALETTE
 //
-// The purchase screen is dark in both themes: the launch screen's ground,
-// with the app icon's green spent only on what matters -- the Pro values, the
-// chosen plan and the button. One green, one row style, no glows.
+// Follows the app theme. Dark keeps the launch screen's ground, with the app
+// icon's green spent only on what matters -- the Pro values, the chosen plan
+// and the button. Light uses the app's own surfaces and primary. One green,
+// one row style, no glows.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _bg = Color(0xFF0B110E);
-const _card = Color(0xFF111915);
-const _line = Color(0xFF22302A);
-const _ink = Color(0xFFEEF3EF);
-const _muted = Color(0xFF93A198);
-const _faint = Color(0xFF5E6B63);
-const _em = Color(0xFF34D399);
-const _onEm = Color(0xFF04150D);
-const _amber = Color(0xFFF5A524);
+class _Pw {
+  const _Pw({
+    required this.isDark,
+    required this.bg,
+    required this.card,
+    required this.line,
+    required this.ink,
+    required this.muted,
+    required this.faint,
+    required this.em,
+    required this.onEm,
+    required this.amber,
+    required this.wash,
+  });
 
-/// The few colours the notice and footer read, on the one dark ground.
-class _Palette {
-  const _Palette();
+  final bool isDark;
+  final Color bg;
+  final Color card;
+  final Color line;
+  final Color ink;
+  final Color muted;
+  final Color faint;
 
-  bool get isDark => true;
-  Color get ink => _ink;
-  Color get muted => _muted;
-  Color get accentInk => _em;
+  /// The one green.
+  final Color em;
+  final Color onEm;
+  final Color amber;
+
+  /// A faint tint for chips and tracks: white on dark, black on light.
+  final Color wash;
+
+  Color get accentInk => em;
+
+  static const _dark = _Pw(
+    isDark: true,
+    bg: Color(0xFF0B110E),
+    card: Color(0xFF111915),
+    line: Color(0xFF22302A),
+    ink: Color(0xFFEEF3EF),
+    muted: Color(0xFF93A198),
+    faint: Color(0xFF5E6B63),
+    em: Color(0xFF34D399),
+    onEm: Color(0xFF04150D),
+    amber: Color(0xFFF5A524),
+    wash: Colors.white,
+  );
+
+  factory _Pw.of(BuildContext context) {
+    final theme = Theme.of(context);
+    if (theme.brightness == Brightness.dark) return _dark;
+    final s = theme.colorScheme;
+    return _Pw(
+      isDark: false,
+      bg: theme.scaffoldBackgroundColor,
+      card: s.surfaceContainerLowest,
+      line: s.outlineVariant,
+      ink: s.onSurface,
+      muted: s.onSurfaceVariant,
+      faint: s.outline,
+      em: s.primary,
+      onEm: s.onPrimary,
+      amber: const Color(0xFFB7791F),
+      wash: Colors.black,
+    );
+  }
 }
+
+/// The palette of the screen being built. Set at the top of each route's
+/// build (the screen and its sheet), so every widget below reads the theme
+/// the person is on.
+_Pw _pw = _Pw._dark;
 
 // The legal pages are hosted by the backend (see `backend/legal/`), and the
 // app links to the same `/terms` and `/privacy` routes there. Store review
@@ -589,6 +642,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    _pw = _Pw.of(context);
 
     // Close the screen if Pro arrives late.
     //
@@ -615,146 +669,153 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     return PopScope(
       canPop: !_isLoading && !_restoring,
       child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light.copyWith(
-          statusBarColor: Colors.transparent,
-          systemNavigationBarColor: _bg,
-        ),
-        child: Scaffold(
-          backgroundColor: _bg,
-          body: Stack(
-            children: [
-              // A soft light behind the name, and nothing else glowing.
-              const Positioned(
-                top: -170,
-                left: -60,
-                right: -60,
-                height: 380,
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        colors: [Color(0x1F34D399), Color(0x0034D399)],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SafeArea(
-                // One screen on most phones: the column fills the height, and
-                // only a short phone or large text makes it scroll.
-                child: CustomScrollView(
-                  slivers: [
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildTop(context),
-                            const SizedBox(height: 10),
-                            _buildHeader(context, l10n),
-                            const SizedBox(height: 18),
-                            Reveal(
-                              delay: const Duration(milliseconds: 520),
-                              offset: const Offset(0, 24),
-                              duration: const Duration(milliseconds: 640),
-                              child: _CompareCard(rows: _compareRows(l10n)),
-                            ),
-                            Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: Reveal(
-                                delay: const Duration(milliseconds: 800),
-                                offset: const Offset(0, 8),
-                                child: _EverythingLink(
-                                  label: l10n.paywall_see_everything,
-                                  onTap: () => _showEverything(context),
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            ..._buildNotices(),
-                            const SizedBox(height: 10),
-                            _buildPlans(l10n),
-                            const SizedBox(height: 12),
-                            Reveal(
-                              delay: const Duration(milliseconds: 1050),
-                              offset: const Offset(0, 24),
-                              duration: const Duration(milliseconds: 620),
-                              child: _PrimaryCta(
-                                key: const ValueKey('paywall-cta'),
-                                label: _ctaLabel(l10n, package, trial),
-                                busy: _isLoading,
-                                done: _purchaseDone,
-                                enabled:
-                                    !_purchaseDone &&
-                                    !_isLoading &&
-                                    !_restoring &&
-                                    !_loadingOfferings &&
-                                    package != null,
-                                onTap: _handlePurchase,
-                              ),
-                            ),
-                            const SizedBox(height: 9),
-                            // Store rules want the trial, the price after it
-                            // and the billing period right beside the button.
-                            AnimatedSwitcher(
-                              duration: AppMotion.maybeZero(
-                                context,
-                                AppMotion.expansion,
-                              ),
-                              layoutBuilder:
-                                  (current, previous) => Stack(
-                                    alignment: Alignment.topCenter,
-                                    children: [
-                                      ...previous,
-                                      if (current != null) current,
-                                    ],
-                                  ),
-                              child: Text(
-                                disclosure ?? l10n.paywall_cancel_anytime,
-                                key: ValueKey(disclosure),
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: _muted,
-                                  fontSize: 12.5,
-                                  height: 1.35,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            _LegalFooter(
-                              palette: const _Palette(),
-                              onTerms: () => _openUrl(_termsUrl),
-                              onPrivacy: () => _openUrl(_privacyPolicyUrl),
-                              onRestore:
-                                  (_isLoading || _restoring)
-                                      ? null
-                                      : _handleRestore,
-                              restoring: _restoring,
-                            ),
+        value: (_pw.isDark
+                ? SystemUiOverlayStyle.light
+                : SystemUiOverlayStyle.dark)
+            .copyWith(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: _pw.bg,
+            ),
+        // This screen does not move: entrances, flips and slides all land at
+        // once. Everything below reads the "reduce motion" flag, so switching
+        // it on here is the whole of it.
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: Scaffold(
+            backgroundColor: _pw.bg,
+            body: Stack(
+              children: [
+                // A soft light behind the name, and nothing else glowing.
+                Positioned(
+                  top: -170,
+                  left: -60,
+                  right: -60,
+                  height: 380,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          colors: [
+                            _pw.em.withValues(alpha: _pw.isDark ? 0.12 : 0.08),
+                            _pw.em.withValues(alpha: 0),
                           ],
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                SafeArea(
+                  // One screen on most phones: the column fills the height, and
+                  // only a short phone or large text makes it scroll.
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildTop(context),
+                              const SizedBox(height: 10),
+                              _buildHeader(context, l10n),
+                              const SizedBox(height: 18),
+                              Reveal(
+                                delay: const Duration(milliseconds: 520),
+                                offset: const Offset(0, 24),
+                                duration: const Duration(milliseconds: 640),
+                                child: _CompareCard(rows: _compareRows(l10n)),
+                              ),
+                              Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Reveal(
+                                  delay: const Duration(milliseconds: 800),
+                                  offset: const Offset(0, 8),
+                                  child: _EverythingLink(
+                                    label: l10n.paywall_see_everything,
+                                    onTap: () => _showEverything(context),
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              ..._buildNotices(),
+                              const SizedBox(height: 10),
+                              _buildPlans(l10n),
+                              const SizedBox(height: 12),
+                              Reveal(
+                                delay: const Duration(milliseconds: 1050),
+                                offset: const Offset(0, 24),
+                                duration: const Duration(milliseconds: 620),
+                                child: _PrimaryCta(
+                                  key: const ValueKey('paywall-cta'),
+                                  label: _ctaLabel(l10n, package, trial),
+                                  busy: _isLoading,
+                                  done: _purchaseDone,
+                                  enabled:
+                                      !_purchaseDone &&
+                                      !_isLoading &&
+                                      !_restoring &&
+                                      !_loadingOfferings &&
+                                      package != null,
+                                  onTap: _handlePurchase,
+                                ),
+                              ),
+                              const SizedBox(height: 9),
+                              // Store rules want the trial, the price after it
+                              // and the billing period right beside the button.
+                              AnimatedSwitcher(
+                                duration: AppMotion.maybeZero(
+                                  context,
+                                  AppMotion.expansion,
+                                ),
+                                layoutBuilder:
+                                    (current, previous) => Stack(
+                                      alignment: Alignment.topCenter,
+                                      children: [
+                                        ...previous,
+                                        if (current != null) current,
+                                      ],
+                                    ),
+                                child: Text(
+                                  disclosure ?? l10n.paywall_cancel_anytime,
+                                  key: ValueKey(disclosure),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: _pw.muted,
+                                    fontSize: 12.5,
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              _LegalFooter(
+                                palette: _pw,
+                                onTerms: () => _openUrl(_termsUrl),
+                                onPrivacy: () => _openUrl(_privacyPolicyUrl),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  /// Close on the start edge, Restore Purchases on the end edge: where a
+  /// returning subscriber looks for it, and out of the crowded footer.
   Widget _buildTop(BuildContext context) {
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
-      child: Reveal(
-        offset: const Offset(0, -8),
-        duration: const Duration(milliseconds: 400),
-        child: Semantics(
+    final l10n = AppLocalizations.of(context)!;
+    return Row(
+      children: [
+        Semantics(
           button: true,
           label: MaterialLocalizations.of(context).closeButtonTooltip,
           child: GestureDetector(
@@ -768,14 +829,30 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
+                color: _pw.wash.withValues(alpha: 0.06),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(WaznIcons.close, size: 17, color: _muted),
+              child: Icon(WaznIcons.close, size: 17, color: _pw.muted),
             ),
           ),
         ),
-      ),
+        const SizedBox(width: 12),
+        // Flexible: at a large text size the label wraps to a second line
+        // instead of running past the edge.
+        Flexible(
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: _FooterLink(
+              key: const ValueKey('paywall-restore'),
+              label: l10n.paywall_restore,
+              onTap: (_isLoading || _restoring) ? null : _handleRestore,
+              palette: _pw,
+              busy: _restoring,
+              size: 13.5,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -806,11 +883,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                   TextSpan(
                     children: [
                       TextSpan(text: '${l10n.appTitle} '),
-                      const TextSpan(text: 'Pro', style: TextStyle(color: _em)),
+                      TextSpan(text: 'Pro', style: TextStyle(color: _pw.em)),
                     ],
                   ),
-                  style: const TextStyle(
-                    color: _ink,
+                  style: TextStyle(
+                    color: _pw.ink,
                     fontSize: 30,
                     height: 1.05,
                     fontWeight: FontWeight.w800,
@@ -828,7 +905,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           child: Text(
             headline,
             style: TextStyle(
-              color: general ? _muted : _ink,
+              color: general ? _pw.muted : _pw.ink,
               fontSize: 15.5,
               height: 1.35,
               fontWeight: FontWeight.w500,
@@ -921,7 +998,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final limit = ScanGateService().getMonthlyLimit();
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF131C17),
+      backgroundColor: _pw.isDark ? const Color(0xFF131C17) : _pw.card,
       showDragHandle: true,
       builder:
           (_) => _EverythingSheet(
@@ -957,7 +1034,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           padding: const EdgeInsets.only(top: 10),
           child: _NoticeBanner(
             message: _purchaseNotice!,
-            palette: const _Palette(),
+            palette: _pw,
             // Every purchase notice is a state the user can try again from.
             onRetry: _isLoading ? null : _handlePurchase,
           ),
@@ -967,7 +1044,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           padding: const EdgeInsets.only(top: 10),
           child: _NoticeBanner(
             message: _offeringsNotice!,
-            palette: const _Palette(),
+            palette: _pw,
             onRetry: _loadOfferings,
           ),
         ),
@@ -1016,6 +1093,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
             price: _introFor(p)?.priceString ?? _safePriceString(p),
             note: _planNote(p, l10n),
             noteIsOffer: _trialFor(p) != null,
+            extra: identical(p, annual) ? _perMonth(p, l10n) : null,
             badge:
                 annual != null && identical(p, annual) && savings != null
                     ? l10n.paywall_save_percent(savings)
@@ -1038,6 +1116,24 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       PackageType.monthly => l10n.paywall_plan_per_month,
       _ => '',
     };
+  }
+
+  /// The yearly price over twelve months, written the way the store writes
+  /// prices (same currency symbol, same side), so it reads as the same money.
+  /// Null when there is a first-period discount: the tile then shows that.
+  String? _perMonth(Package package, AppLocalizations l10n) {
+    try {
+      if (_introFor(package) != null) return null;
+      final product = package.storeProduct;
+      final text = product.priceString;
+      final number = RegExp(r'd[d.,  ]*d|d').firstMatch(text);
+      if (number == null || product.price <= 0) return null;
+      final monthly = (product.price / 12).toStringAsFixed(2);
+      final line = text.replaceRange(number.start, number.end, monthly);
+      return l10n.paywall_plan_per_month_equiv(line);
+    } catch (_) {
+      return null;
+    }
   }
 
   String _safePriceString(Package package) {
@@ -1083,47 +1179,11 @@ class _CompareCard extends StatefulWidget {
   State<_CompareCard> createState() => _CompareCardState();
 }
 
-class _CompareCardState extends State<_CompareCard>
-    with SingleTickerProviderStateMixin {
-  bool _pro = false;
-  bool _touched = false;
-
-  /// Waits for the card to arrive before the first flip.
-  late final AnimationController _wait = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1700),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _wait.addStatusListener((status) {
-      if (status == AnimationStatus.completed && !_touched && mounted) {
-        setState(() => _pro = true);
-      }
-    });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_wait.isAnimating || _wait.isCompleted || _touched) return;
-    if (AppMotion.reduceMotion(context)) {
-      _pro = true;
-      _wait.value = 1;
-    } else {
-      _wait.forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _wait.dispose();
-    super.dispose();
-  }
+class _CompareCardState extends State<_CompareCard> {
+  // Opens on Pro: this is the screen that sells it. Free is one tap away.
+  bool _pro = true;
 
   void _set(bool pro) {
-    _touched = true;
     if (pro == _pro) return;
     HapticFeedback.selectionClick();
     setState(() => _pro = pro);
@@ -1137,9 +1197,11 @@ class _CompareCardState extends State<_CompareCard>
       duration: AppMotion.maybeZero(context, const Duration(milliseconds: 450)),
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
       decoration: BoxDecoration(
-        color: _card,
+        color: _pw.card,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _pro ? _em.withValues(alpha: 0.4) : _line),
+        border: Border.all(
+          color: _pro ? _pw.em.withValues(alpha: 0.4) : _pw.line,
+        ),
       ),
       child: Column(
         children: [
@@ -1188,10 +1250,10 @@ class _Switch extends StatelessWidget {
           onTap: () => onChanged(value),
           child: Center(
             child: AnimatedDefaultTextStyle(
-              duration: AppMotion.standard,
+              duration: Duration.zero,
               // Merged, not replaced: a bare style here dropped the font.
               style: DefaultTextStyle.of(context).style.copyWith(
-                color: pro == value ? (value ? _onEm : _ink) : _muted,
+                color: pro == value ? (value ? _pw.onEm : _pw.ink) : _pw.muted,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
@@ -1205,7 +1267,7 @@ class _Switch extends StatelessWidget {
       height: 38,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: _pw.wash.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Stack(
@@ -1224,9 +1286,9 @@ class _Switch extends StatelessWidget {
               widthFactor: .5,
               heightFactor: 1,
               child: AnimatedContainer(
-                duration: AppMotion.standard,
+                duration: Duration.zero,
                 decoration: BoxDecoration(
-                  color: pro ? _em : Colors.white.withValues(alpha: 0.1),
+                  color: pro ? _pw.em : _pw.wash.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(9),
                 ),
               ),
@@ -1297,8 +1359,7 @@ class _CompareRowState extends State<_CompareRow>
       constraints: const BoxConstraints(minHeight: 43),
       padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        border:
-            widget.first ? null : const Border(top: BorderSide(color: _line)),
+        border: widget.first ? null : Border(top: BorderSide(color: _pw.line)),
       ),
       // Name on the start edge, value on the end edge; each takes the room
       // it needs, and both wrap rather than overflow on a narrow phone.
@@ -1311,7 +1372,7 @@ class _CompareRowState extends State<_CompareRow>
               mainAxisSize: MainAxisSize.min,
               children: [
                 TweenAnimationBuilder<Color?>(
-                  tween: ColorTween(end: widget.pro ? _em : _faint),
+                  tween: ColorTween(end: widget.pro ? _pw.em : _pw.faint),
                   duration: AppMotion.maybeZero(context, AppMotion.expansion),
                   builder:
                       (context, color, _) =>
@@ -1323,8 +1384,8 @@ class _CompareRowState extends State<_CompareRow>
                     data.label,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _ink,
+                    style: TextStyle(
+                      color: _pw.ink,
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1361,7 +1422,10 @@ class _CompareRowState extends State<_CompareRow>
                     textAlign: TextAlign.end,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: showPro ? _em : (data.warning ? _amber : _muted),
+                      color:
+                          showPro
+                              ? _pw.em
+                              : (data.warning ? _pw.amber : _pw.muted),
                       fontSize: 14,
                       fontWeight:
                           showPro || data.warning
@@ -1393,15 +1457,28 @@ class _EverythingLink extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: _muted,
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
-            decoration: TextDecoration.underline,
-            decorationColor: _muted.withValues(alpha: 0.4),
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: _pw.em,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            Icon(
+              Directionality.of(context) == TextDirection.rtl
+                  ? Icons.chevron_left_rounded
+                  : Icons.chevron_right_rounded,
+              size: 18,
+              color: _pw.em,
+            ),
+          ],
         ),
       ),
     );
@@ -1418,6 +1495,7 @@ class _EverythingSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    _pw = _Pw.of(context);
     return SafeArea(
       top: false,
       child: SingleChildScrollView(
@@ -1427,53 +1505,49 @@ class _EverythingSheet extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(
-                color: _ink,
+              style: TextStyle(
+                color: _pw.ink,
                 fontSize: 19,
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 14),
             for (var i = 0; i < items.length; i++)
-              Reveal(
-                delay: Duration(milliseconds: 120 + 60 * i),
-                offset: const Offset(0, 12),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(top: 1),
-                        child: Icon(WaznIcons.success, size: 20, color: _em),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              items[i].$1,
-                              style: const TextStyle(
-                                color: _ink,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(top: 1),
+                      child: Icon(WaznIcons.success, size: 20, color: _pw.em),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            items[i].$1,
+                            style: TextStyle(
+                              color: _pw.ink,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              items[i].$2,
-                              style: const TextStyle(
-                                color: _muted,
-                                fontSize: 13,
-                                height: 1.3,
-                              ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            items[i].$2,
+                            style: TextStyle(
+                              color: _pw.muted,
+                              fontSize: 13,
+                              height: 1.3,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
           ],
@@ -1497,6 +1571,7 @@ class _PlanData {
     required this.note,
     this.noteIsOffer = false,
     this.badge,
+    this.extra,
   });
 
   final String label;
@@ -1506,6 +1581,9 @@ class _PlanData {
   /// The note names a free trial: shown in green.
   final bool noteIsOffer;
   final String? badge;
+
+  /// A quieter last line, such as the yearly price spread over a month.
+  final String? extra;
 }
 
 class _PlanTiles extends StatelessWidget {
@@ -1578,7 +1656,7 @@ class _PlanTiles extends StatelessWidget {
                         key: const ValueKey('paywall-plan-ring'),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: _em, width: 2),
+                          border: Border.all(color: _pw.em, width: 2),
                         ),
                       ),
                     ),
@@ -1618,9 +1696,15 @@ class _PlanTile extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
               decoration: BoxDecoration(
-                color: _card,
+                color:
+                    selected
+                        ? Color.alphaBlend(
+                          _pw.em.withValues(alpha: _pw.isDark ? 0.10 : 0.07),
+                          _pw.card,
+                        )
+                        : _pw.card,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _line),
+                border: Border.all(color: _pw.line),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1635,8 +1719,8 @@ class _PlanTile extends StatelessWidget {
                     children: [
                       Text(
                         data.label,
-                        style: const TextStyle(
-                          color: _muted,
+                        style: TextStyle(
+                          color: _pw.muted,
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1648,13 +1732,13 @@ class _PlanTile extends StatelessWidget {
                             vertical: 1,
                           ),
                           decoration: BoxDecoration(
-                            color: _em,
+                            color: _pw.em,
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
                             data.badge!,
-                            style: const TextStyle(
-                              color: _onEm,
+                            style: TextStyle(
+                              color: _pw.onEm,
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                               letterSpacing: .3,
@@ -1670,8 +1754,8 @@ class _PlanTile extends StatelessWidget {
                     child: Text(
                       data.price,
                       maxLines: 1,
-                      style: const TextStyle(
-                        color: _ink,
+                      style: TextStyle(
+                        color: _pw.ink,
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.2,
@@ -1684,13 +1768,27 @@ class _PlanTile extends StatelessWidget {
                       data.note,
                       maxLines: 2,
                       style: TextStyle(
-                        color: data.noteIsOffer ? _em : _faint,
+                        color: data.noteIsOffer ? _pw.em : _pw.faint,
                         fontSize: 11.5,
                         height: 1.25,
                         fontWeight:
                             data.noteIsOffer
                                 ? FontWeight.w700
                                 : FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  if (data.extra != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      data.extra!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _pw.muted,
+                        fontSize: 11.5,
+                        height: 1.25,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -1717,9 +1815,9 @@ class _PlanSkeleton extends StatelessWidget {
             child: Container(
               height: 84,
               decoration: BoxDecoration(
-                color: _card,
+                color: _pw.card,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _line),
+                border: Border.all(color: _pw.line),
               ),
             ),
           ),
@@ -1737,7 +1835,7 @@ class _NoticeBanner extends StatelessWidget {
   });
 
   final String message;
-  final _Palette palette;
+  final _Pw palette;
   final VoidCallback? onRetry;
 
   @override
@@ -1837,19 +1935,28 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
                 : null,
         child: AnimatedScale(
           scale: _pressed ? 0.975 : 1,
-          duration: const Duration(milliseconds: 120),
+          duration: Duration.zero,
           curve: Curves.easeOut,
           child: AnimatedOpacity(
             opacity: enabled ? 1 : 0.55,
-            duration: const Duration(milliseconds: 160),
+            duration: Duration.zero,
             child: Container(
-              constraints: const BoxConstraints(minHeight: 56),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              constraints: const BoxConstraints(minHeight: 60),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               width: double.infinity,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: _em,
-                borderRadius: BorderRadius.circular(16),
+                color: _pw.em,
+                borderRadius: BorderRadius.circular(18),
+                // A soft shadow lifts it off the page: the one thing on this
+                // screen meant to be pressed.
+                boxShadow: [
+                  BoxShadow(
+                    color: _pw.em.withValues(alpha: _pw.isDark ? 0.35 : 0.30),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               // A new plan's words rise into the button; paying turns them
               // into a spinner and then a tick.
@@ -1879,25 +1986,40 @@ class _PrimaryCtaState extends State<_PrimaryCta> {
                     widget.done
                         ? const _DrawnTick(key: ValueKey('done'))
                         : widget.busy
-                        ? const SizedBox(
+                        ? SizedBox(
                           key: ValueKey('busy'),
                           width: 21,
                           height: 21,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.2,
-                            valueColor: AlwaysStoppedAnimation(_onEm),
+                            valueColor: AlwaysStoppedAnimation(_pw.onEm),
                           ),
                         )
-                        : Text(
-                          widget.label,
+                        : Row(
                           key: ValueKey(widget.label),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: _onEm,
-                            fontSize: 16,
-                            letterSpacing: 0,
-                            fontWeight: FontWeight.w800,
-                          ),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                widget.label,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: _pw.onEm,
+                                  fontSize: 17,
+                                  letterSpacing: 0,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Directionality.of(context) == TextDirection.rtl
+                                  ? Icons.arrow_back_rounded
+                                  : Icons.arrow_forward_rounded,
+                              size: 20,
+                              color: _pw.onEm,
+                            ),
+                          ],
                         ),
               ),
             ),
@@ -1944,7 +2066,7 @@ class _TickPainter extends CustomPainter {
     canvas.drawPath(
       metric.extractPath(0, metric.length * progress),
       Paint()
-        ..color = _onEm
+        ..color = _pw.onEm
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3
         ..strokeCap = StrokeCap.round
@@ -1961,15 +2083,11 @@ class _LegalFooter extends StatelessWidget {
     required this.palette,
     required this.onTerms,
     required this.onPrivacy,
-    required this.onRestore,
-    required this.restoring,
   });
 
-  final _Palette palette;
+  final _Pw palette;
   final VoidCallback onTerms;
   final VoidCallback onPrivacy;
-  final VoidCallback? onRestore;
-  final bool restoring;
 
   @override
   Widget build(BuildContext context) {
@@ -1982,12 +2100,6 @@ class _LegalFooter extends StatelessWidget {
       spacing: 16,
       runSpacing: 2,
       children: [
-        _FooterLink(
-          label: l10n.paywall_restore,
-          onTap: onRestore,
-          palette: palette,
-          busy: restoring,
-        ),
         _FooterLink(
           label: l10n.paywall_terms_conditions,
           onTap: onTerms,
@@ -2005,15 +2117,18 @@ class _LegalFooter extends StatelessWidget {
 
 class _FooterLink extends StatelessWidget {
   const _FooterLink({
+    super.key,
     required this.label,
     required this.onTap,
     required this.palette,
     this.busy = false,
+    this.size = 11.5,
   });
 
   final String label;
   final VoidCallback? onTap;
-  final _Palette palette;
+  final _Pw palette;
+  final double size;
 
   /// Shows a spinner in place of the label. Restore had no busy state at all
   /// and rendered identically whether or not it was disabled, so during a
@@ -2043,13 +2158,14 @@ class _FooterLink extends StatelessWidget {
                 )
                 : Text(
                   label,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     // Dimmed when there is nothing behind the tap, so a
                     // disabled link does not look like a live one.
                     color: palette.muted.withValues(
                       alpha: onTap == null ? 0.4 : 1,
                     ),
-                    fontSize: 11.5,
+                    fontSize: size,
                     height: 1.2,
                     fontWeight: FontWeight.w600,
                   ),
